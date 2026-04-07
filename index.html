@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Sofia Yrd Maps</title>
+	
+    <!-- === Discord OPEN GRAPH META TAGS === -->
+    <meta property="og:title" content="Sofia Yrd Maps - Градски транспорт София" />
+    <meta property="og:description" content="Следете градския транспорт в реално време. Карта, маршрути и разписания за София." />
+    <meta property="og:image" content="https://enforcebg.eu/sofia_traffic_icon2-500x262.png" />
+    <meta property="og:url" content="https://enforcebg.eu/" />
+    <meta property="og:type" content="website" />
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    
+    <!-- PWA Settings -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#1c75bc">
+
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Външни библиотеки (CSS) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
+    <link rel="apple-touch-icon" href="sofia_traffic_icon2.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="sofia_traffic_icon2.png">
+
+    <!-- 1. ЗАРЕЖДАМЕ CONFIG -->
+    <script src="config.js"></script> 
+
+    <!-- 2. ДИНАМИЧНО ЗАРЕЖДАНЕ НА CSS -->
+    <script>
+        var ver = (typeof APP_CONFIG !== 'undefined') ? APP_CONFIG.version : Date.now();
+        var cssLink = document.createElement("link");
+        cssLink.rel = "stylesheet";
+        cssLink.href = "style.css?v=" + ver;
+        document.head.appendChild(cssLink);
+    </script>
+
+    <!-- 3. ДОПЪЛНИТЕЛЕН CSS ЗА КОМПАКТНИ НАСТРОЙКИ -->
+    <style>
+        .settings-item {
+            padding: 10px 12px !important;
+            min-height: 50px !important;
+        }
+        .settings-icon-box {
+            width: 36px !important;
+            height: 36px !important;
+        }
+        .settings-icon-box .material-icons-round {
+            font-size: 20px !important;
+        }
+        
+        /* ВРЕМЕННО: Стил за баджовете (в случай че style.css не се е опреснил още) */
+        .notification-badge {
+            position: absolute;
+            top: -5px; right: -5px;
+            min-width: 18px; height: 18px;
+            background-color: #ff3b30; color: white;
+            border: 2px solid white; border-radius: 50%;
+            font-size: 10px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 100;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            animation: badge-pulse 2s infinite;
+        }
+        .notification-badge.hidden { display: none !important; }
+        @keyframes badge-pulse { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+        
+        /* Wrapper за иконата в навигацията */
+        .nav-item .icon-wrapper { position: relative; display: inline-block; }
+    </style>
+</head>
+
+<body>
+
+    <!-- 1. АВАРИЕН ЕКРАН ЗА ГРЕШКИ -->
+    <div id="crash-report" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; color:red; z-index:9999999; padding:20px; font-family:monospace; overflow:scroll;">
+        <h2>💥 CRASH REPORT</h2>
+        <p id="crash-msg">Loading...</p>
+        <button onclick="localStorage.clear(); window.location.reload(true);" style="padding:15px; font-weight:bold; width:100%; margin-top:20px;">ИЗЧИСТИ ВСИЧКО И РЕСТАРТ</button>
+    </div>
+
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            var crashDiv = document.getElementById('crash-report');
+            var msgDiv = document.getElementById('crash-msg');
+            crashDiv.style.display = 'block';
+            msgDiv.innerHTML = "<strong>Error:</strong> " + message + "<br><br>" + "<strong>File:</strong> " + source + "<br>" + "<strong>Line:</strong> " + lineno;
+            var loader = document.getElementById('app-loader');
+            if(loader) loader.style.display = 'none';
+        };
+    </script>
+
+    <!-- LOADER -->
+    <div id="app-loader" style="position:fixed; top:0; left:0; width:100%; height:100%; background:var(--background); z-index:99999; display:flex; align-items:center; justify-content:center; flex-direction:column;">
+        <span class="material-icons-round rotating" style="font-size:48px; color:#1c75bc;">refresh</span>
+        <p style="margin-top:10px; font-family:sans-serif; color:var(--on-surface);">Зареждане...</p>
+    </div>
+
+
+    <!-- ========================================= -->
+    <!-- ОСНОВНИ ЕКРАНИ (SCREENS) -->
+    <!-- ========================================= -->
+
+    <!-- ЕКРАН: КАРТА -->
+<div id="screen-map" class="screen active">
+    <div id="map"></div>
+
+    <!-- НОВ КОНТЕЙНЕР ЗА БУТОНИТЕ (ДОЛУ ВДЯСНО) -->
+<div id="map-buttons-container" class="map-floating-buttons">
+    
+    <!-- 1. ХОРИЗОНТАЛЕН БАР С ПАРКИНГИ (Chips) -->
+    <div class="parking-scroll-wrapper hidden" id="parking-selection-container">
+        <button class="scroll-arrow left-arrow hidden" id="parking-scroll-left">
+            <span class="material-icons-round">chevron_left</span>
+        </button>
+        <div id="parking-selection-bar" class="parking-chips-container"></div>
+        <button class="scroll-arrow right-arrow hidden" id="parking-scroll-right">
+            <span class="material-icons-round">chevron_right</span>
+        </button>
+    </div>
+
+    <!-- 2. МЕНЮ СЛОЕВЕ (Разгъва се наляво) -->
+    <div id="layers-expansion-menu" class="layers-menu-horizontal menu-hidden">
+        <!-- Нов бутон за чиповете -->
+        <button id="btn-toggle-parking" class="fab-sub-menu">
+            <span class="material-icons-round">local_parking</span>
+        </button>
+        <!-- ТВОИТЕ ОРИГИНАЛНИ БУТОНИ - ЗАПАЗЕНИ ID -->
+        <button id="btn-traffic" class="fab-sub-menu">
+            <span class="material-icons-round">traffic</span>
+        </button>
+        <button id="btn-live-radar" class="fab-sub-menu">
+            <span class="material-icons-round">directions_bus</span>
+        </button>
+    </div>
+    
+
+    <!-- ГЛАВЕН БУТОН СЛОЕВЕ -->
+    <button id="btn-layers-main" class="fab-static">
+        <span class="material-icons-round" id="layers-icon-main">layers</span>
+    </button>
+
+    <!-- ТВОЯТ БУТОН ЛОКАЦИЯ -->
+    <button id="btn-locate" class="fab-static">
+        <span class="material-icons-round">my_location</span>
+    </button>
+
+    <!-- ТВОЯТ БУТОН МАРШРУТИ -->
+    <button id="btn-find-routes" class="fab-extended-static hidden">
+        <span class="material-icons-round">directions</span>
+        <span data-i18n="find_routes">Намери маршрути</span>
+    </button>
+</div>
+
+<!-- ДЕТАЙЛЕН ПАНЕЛ ЗА ПАРКИНГ (Z-index 20000) -->
+<div id="parking-details-sheet" class="bottom-sheet hidden parking-full-sheet">
+    <div class="sheet-header-area">
+        <div class="sheet-handle-bar"><div class="sheet-handle"></div></div>
+        <div class="sheet-title-row">
+            <h2 id="parking-name" style="font-weight: 900; font-size: 22px;">...</h2>
+            <button class="icon-btn close-btn" onclick="closeParkingSheet()">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+    </div>
+    <div id="parking-content" class="sheet-content"></div>
+</div>
+
+
+    <!-- ГЛАВЕН КОНТЕЙНЕР ЗА ГОРНИТЕ КОНТРОЛИ (Стек подредба без застъпване) -->
+    <div id="map-top-controls-wrapper" style="position: absolute; top: calc(10px + var(--safe-top)); left: 0; right: 0; z-index: 2005; display: flex; flex-direction: column; gap: 8px; pointer-events: none;">
+        
+        <!-- 1. РЕД: ТЪРСАЧКА НА КАРТАТА -->
+        <div id="map-search-container" style="display: flex; gap: 8px; align-items: center; padding: 0 16px; width: 100%;">
+            <div class="search-bar" style="flex-grow: 1; pointer-events: auto;">
+                <span class="material-icons-round search-icon">search</span>
+                <input type="text" id="map-search-input" data-i18n-placeholder="search_placeholder" placeholder="Търсене на адрес или спирка...">
+                <button id="btn-search-clear" class="search-clear-btn hidden">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            <button id="btn-map-filter" class="icon-btn" style="background: var(--surface); box-shadow: 0 2px 6px rgba(0,0,0,0.3); width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0; pointer-events: auto;">
+                <span class="material-icons-round" style="color: var(--on-surface-variant);">tune</span>
+            </button>
+        </div>
+
+        <!-- 2. РЕД: ЛЕНТА ЗА ЛЮБИМИ МЕСТА (CHIPS) -->
+        <div id="favorite-places-container" style="width: 100%;">
+            <div id="favorite-places-bar" style="display: flex; gap: 8px; overflow-x: auto; padding: 4px 16px; scrollbar-width: none; pointer-events: auto;">
+                <!-- Хапчетата се генерират динамично от JS -->
+            </div>
+        </div>
+
+        <!-- 3. РЕД: АКТИВНИ МАРШРУТИ / ЛИНИИ (Появяват се само когато са пуснати) -->
+        <div id="active-routes-container" class="routes-container hidden" style="position: static; width: 100%; padding: 0 16px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; pointer-events: auto;">
+            <!-- Хапчетата за линии се генерират тук -->
+        </div>
+
+    </div> <!-- Край на map-top-controls-wrapper -->
+
+
+    <!-- ПАНЕЛ ЗА МАРШРУТИ (Autocomplete/Планиране) -->
+<!-- Б. ПАНЕЛ ЗА МАРШРУТИ -->
+<div id="route-panel" class="route-panel-container hidden" style="width: auto; margin: 0 16px;">
+    <!-- Ред: ОТ -->
+    <div class="route-row">
+        <span class="material-icons-round route-icon-dot">radio_button_unchecked</span>
+        <input type="text" id="route-from-input" placeholder="От: Моето местоположение" class="route-input">
+        <button id="btn-use-my-loc" class="icon-btn-small"><span class="material-icons-round">my_location</span></button>
+    </div>
+    
+    <!-- Свързващи точки -->
+    <div class="route-dots-connector"></div>
+    
+    <!-- Ред: ДО -->
+    <div class="route-row">
+        <span class="material-icons-round route-icon-pin">place</span>
+        <input type="text" id="route-to-input" placeholder="До: ..." class="route-input" readonly>
+    </div>
+    
+    <!-- Бутони -->
+    <div class="route-actions-row">
+        <button id="btn-route-cancel" class="route-action-btn cancel">Отказ</button>
+        <button id="btn-route-go" class="route-action-btn go">
+            <span class="material-icons-round">directions</span> Виж линиите
+        </button>
+    </div>
+</div>
+
+
+
+    <!-- КОНТРОЛИ ЗА ЦЯЛА ЛИНИЯ (Когато избереш от таб Линии) -->
+    <div id="map-line-controls" class="map-line-controls hidden">
+        <div class="line-info-pill">
+            <span id="map-line-title">...</span>
+        </div>
+        <div class="map-ctrl-actions">
+            <button id="btn-map-vehicles" class="map-circle-btn bg-surface">
+                <span class="material-icons-round">directions_bus</span>
+            </button>
+            <button id="btn-map-close" class="map-circle-btn bg-surface">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="zoom-hint" class="zoom-hint" data-i18n="zoom_hint">Зуумнете, за да видите спирките</div>
+</div>
+
+    <!-- ЕКРАН: SOCIAL / COMMUNITY -->
+    <div id="screen-social" class="screen hidden">
+        <div class="screen-header" style="display: flex; justify-content: space-between; align-items: center; padding-right: 16px;">
+            <h2 data-i18n="title_social" style="margin:0;">Общност</h2>
+            <div id="social-header-actions" style="display:flex; align-items:center; gap:8px;">
+                <span id="current-user-display" style="font-size:12px; color:var(--primary); font-weight:bold;"></span>
+                <button class="icon-btn-small" onclick="openNicknameEditor()" style="width:32px; height:32px; border:1px solid #ddd; border-radius:50%; background:white; display:flex; align-items:center; justify-content:center;">
+                    <span class="material-icons-round" style="font-size:18px; color:#555;">edit</span>
+                </button>
+            </div>
+        </div>
+        
+        <div id="social-maintenance-view" class="hidden">
+            <div class="maintenance-icon-box">
+                <span class="material-icons-round" style="font-size: 40px;">construction</span>
+            </div>
+            <div class="maintenance-title" data-i18n="social_maintenance_title">В процес на разработка</div>
+            <div class="maintenance-desc" data-i18n="social_maintenance_desc">Тази секция в момента се обновява...</div>
+        </div>
+        
+        <!-- Setup Nickname -->
+        <div id="nickname-setup-container" class="hidden">
+            <span class="material-icons-round" style="font-size: 64px; color: var(--primary); margin-bottom: 16px;">face</span>
+            <h3 data-i18n="nick_title">Как да те наричаме?</h3>
+            <p style="color: var(--on-surface-variant); margin-bottom: 24px;" data-i18n="nick_desc">Избери си никнейм, за да докладваш и гласуваш. Вижда се от всички.</p>
+            <input type="text" id="input-nickname" class="nickname-input" data-i18n-placeholder="nick_placeholder" placeholder="Твоят никнейм" maxlength="15">
+            <button id="btn-save-nickname" class="route-action-btn go" style="width: 80%; justify-content: center;" data-i18n="btn_save_enter">Запази и Влез</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="social-main-content" class="screen-content hidden" style="padding: 0;">
+            <div style="padding: 12px 16px 0 16px;">
+                
+                <!-- ЗАГЛАВИЕ 1 -->
+                <div style="font-size: 11px; font-weight: 800; color: var(--on-surface-variant); text-transform: uppercase; margin-bottom: 6px;" data-i18n="sec_incidents">
+                    📍 Инциденти на пътя
+                </div>
+                
+                <!-- РЕД 1 -->
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <div class="report-action-btn btn-crash" onclick="initiateReport('ACCIDENT')" style="flex:1; height: 70px; padding: 8px;">
+                        <span class="material-icons-round" style="font-size: 28px; margin-bottom: 4px;">car_crash</span>
+                        <span class="report-label" data-i18n="rep_crash">Катастрофа</span>
+                    </div>
+                    <div class="report-action-btn btn-police" onclick="initiateReport('POLICE')" style="flex:1; height: 70px; padding: 8px;">
+                        <span class="material-icons-round" style="font-size: 28px; margin-bottom: 4px;">local_police</span>
+                        <span class="report-label" data-i18n="rep_police">Полиция</span>
+                    </div>
+                </div>
+
+                <!-- ЗАГЛАВИЕ 2 -->
+                <div style="font-size: 11px; font-weight: 800; color: var(--on-surface-variant); text-transform: uppercase; margin-bottom: 6px;" data-i18n="sec_bus_cond">
+                    🚌 Състояние на автобуса
+                </div>
+                
+                <!-- РЕД 2 -->
+                <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                    <div class="report-action-btn btn-hot" onclick="initiateReport('HOT')" style="flex:1; height: 65px; padding: 6px;">
+                        <img src="hot.png" style="width: 24px; height: 24px; margin-bottom: 4px; object-fit: contain;">
+                        <span class="report-label" data-i18n="rep_hot">Жега</span>
+                    </div>
+                    <div class="report-action-btn btn-dirty" onclick="initiateReport('DIRTY')" style="flex:1; height: 65px; padding: 6px;">
+                        <img src="stain.png" style="width: 24px; height: 24px; margin-bottom: 4px; object-fit: contain;">
+                        <span class="report-label" data-i18n="rep_dirty">Мръсно</span>
+                    </div>
+                    <div class="report-action-btn btn-cold" onclick="initiateReport('COLD')" style="flex:1; height: 65px; padding: 6px;">
+                        <img src="cold.png" style="width: 24px; height: 24px; margin-bottom: 4px; object-fit: contain;">
+                        <span class="report-label" data-i18n="rep_cold">Студ</span>
+                    </div>
+					<div class="report-action-btn btn-crowded" onclick="initiateReport('CROWDED')" style="flex:1; height: 65px; padding: 6px;">
+                        <img src="crowded.png" style="width: 24px; height: 24px; margin-bottom: 4px; object-fit: contain;">
+                        <span class="report-label" data-i18n="rep_crowded">Претъпкан</span>
+                    </div>
+                </div>
+
+                <!-- БУТОН ROADMAP (С БАДЖ) -->
+                <div onclick="openRoadmapModal()" style="
+                    background: linear-gradient(135deg, #6200ea, #9c27b0);
+                    color: white;
+                    padding: 12px 16px;
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    cursor: pointer;
+                    box-shadow: 0 4px 10px rgba(156, 39, 176, 0.3);
+                    margin-bottom: 16px;
+                ">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="background: rgba(255,255,255,0.2); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                            <span class="material-icons-round" style="font-size: 20px;">campaign</span>
+                        </div>
+                        <div>
+                            <div style="font-weight: bold; font-size: 14px;" data-i18n="btn_roadmap_title">Предложения и Проблеми</div>
+                            <div style="font-size: 11px; opacity: 0.9;" data-i18n="btn_roadmap_desc">Гласувай за нови функции</div>
+                        </div>
+                    </div>
+                    
+                    <!-- ДЯСНАТА ЧАСТ: Стрелка + БАДЖ -->
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <div id="badge-btn-roadmap" class="notification-badge hidden" style="top: -8px; right: 15px;">0</div>
+                        <span class="material-icons-round" style="font-size: 18px;">arrow_forward_ios</span>
+                    </div>
+                </div>
+            
+<!-- 4. ТРИТЕ БУТОНА: ПРОМЕНИ, ПОМОЩ, ИНФО -->
+<div class="social-menu-row" style="display:flex; gap:8px; margin-bottom:24px;">
+    
+    <!-- 1. МАРШРУТНИ ПРОМЕНИ (ЧЕРВЕН) -->
+    <div onclick="loadRouteChanges()" style="flex:1; height:65px; background:rgba(190,30,45,0.1); border:1px solid rgba(190,30,45,0.3); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer;">
+        <span style="color:#BE1E2D; font-weight:800; font-size:10px; text-transform:uppercase; text-align:center; line-height:1.1;" data-i18n="route_changes_title_main">МАРШРУТНИ<br>ПРОМЕНИ</span>
+        <span style="color:#BE1E2D; font-weight:900; font-size:18px; line-height:1; margin-top:2px;">!</span>
+    </div>
+
+    <!-- 2. БУТОН ПОМОЩ (ЗЕЛЕН) -->
+    <div onclick="openGenericModal('modal-help')" style="flex:1; height:65px; background:rgba(0,121,107,0.1); border:1px solid rgba(0,121,107,0.3); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer;">
+        <span style="color:#00796B; font-weight:800; font-size:12px; text-transform:uppercase; margin-bottom:2px;" data-i18n="social_menu_support">ПОМОЩ</span>
+        <span class="material-icons-round" style="color:#00796B; font-size:20px;">support_agent</span>
+    </div>
+
+    <!-- 3. БУТОН ИНФО (СИН) -->
+    <div onclick="openGenericModal('modal-info')" style="flex:1; height:65px; background:rgba(25,118,210,0.1); border:1px solid rgba(25,118,210,0.3); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer;">
+        <span style="color:#1976D2; font-weight:800; font-size:12px; text-transform:uppercase; margin-bottom:2px;" data-i18n="social_menu_community">ИНФО</span>
+        <span class="material-icons-round" style="color:#1976D2; font-size:20px;">info</span>
+    </div>
+</div>
+
+
+
+
+
+
+            </div>
+
+            <!-- FILTERS -->
+            <div class="social-filter-container">
+                <button id="btn-filter-nearby" class="social-filter-tab" onclick="setSocialFilter('NEARBY')">
+                    <span class="material-icons-round" style="font-size:16px; vertical-align:middle; margin-right:4px;">near_me</span>
+                    Наблизо
+                </button>
+                <button id="btn-filter-recent" class="social-filter-tab active" onclick="setSocialFilter('RECENT')">
+                    <span class="material-icons-round" style="font-size:16px; vertical-align:middle; margin-right:4px;">access_time</span>
+                    Най-нови
+                </button>
+            </div>
+            
+            <div id="social-feed-list" style="padding-bottom: 80px;">
+                <div style="text-align: center; padding: 20px; color: #888;">Зареждане...</div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ЕКРАН: ЛИНИИ -->
+    <div id="screen-lines" class="screen hidden">
+        <div class="screen-header"><h2 data-i18n="title_lines">Линии</h2></div>
+        <div class="transport-type-selector-container">
+            <div id="transport-types-row" class="transport-types-row"></div>
+        </div>
+        <div class="screen-content centered-content">
+            <div id="lines-grid" class="lines-grid-container">
+                <div style="text-align:center; padding:40px; color:#888; width: 100%;">
+                    <span class="rotating material-icons-round" style="font-size:48px; opacity:0.5;">refresh</span>
+                    <p data-i18n="loading">Зареждане...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ЕКРАН: ЛИНИИ ДЕТАЙЛИ -->
+    <div id="screen-line-details" class="screen full-screen hidden">
+        <div class="screen-header sticky-header">
+            <div style="display: flex; align-items: center;">
+                <button class="icon-btn" id="btn-back-lines" style="margin-right: 8px;">
+                    <span class="material-icons-round">arrow_back</span>
+                </button>
+                <h2 id="line-details-title" style="flex-grow: 1; text-align: left; font-size: 18px;" data-i18n="details">Детайли</h2>
+            </div>
+        </div>
+        <div id="line-variations-list" class="screen-content centered-content" style="padding-top: 10px; padding-bottom: 20px;"></div>
+    </div>
+
+    <!-- ЕКРАН: РАЗПИСАНИЕ -->
+    <div id="screen-timetable" class="screen full-screen hidden">
+        <div class="screen-header sticky-header">
+            <div style="display: flex; align-items: center;">
+                <button class="icon-btn" id="btn-back-timetable" style="margin-right: 8px;">
+                    <span class="material-icons-round">arrow_back</span>
+                </button>
+                <div style="flex-grow: 1; text-align: left;">
+                    <h2 id="timetable-stop-title" style="font-size: 16px; margin:0;" data-i18n="timetable">Разписание</h2>
+                    <span id="timetable-stop-code" style="font-size: 12px; color: var(--on-surface-variant);">...</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="timetable-tabs centered-content">
+            <div class="tt-tab active" id="tab-weekday" data-i18n="weekday">Делнични</div>
+            <div class="tt-tab" id="tab-holiday" data-i18n="holiday">Празнични</div>
+        </div>
+
+        <div id="timetable-content" class="screen-content centered-content" style="padding-top: 10px;">
+            <div style="text-align:center; padding:40px; color:#888;" data-i18n="loading">Зареждане...</div>
+        </div>
+    </div>
+
+    <!-- ЕКРАН: ЛЮБИМИ -->
+    <div id="screen-favorites" class="screen hidden">
+        <div class="screen-header sticky-header">
+            <div class="fav-header-content">
+                <h2 data-i18n="title_favorites" style="margin: 0;">Любими</h2>
+                <button id="btn-add-custom-stop" class="btn-material-add">
+                    <span class="material-icons-round">add</span>
+                    <span data-i18n="add_btn" style="margin-left: 4px;">Добави</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="screen-content centered-content" style="padding: 0;">
+            <div style="padding: 16px 16px 0 16px;">
+                <div class="search-bar static-search" style="margin-bottom: 10px;">
+                    <span class="material-icons-round search-icon">search</span>
+                    <input type="text" id="fav-search-input" data-i18n-placeholder="fav_search_placeholder" placeholder="Търси спирка за добавяне...">
+                    <button id="btn-fav-search-clear" class="search-clear-btn hidden">
+                        <span class="material-icons-round">close</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="fav-search-results" class="list-container hidden" style="padding-bottom: 80px;"></div>
+
+            <div id="favorites-list" class="list-container" style="padding-bottom: 80px;">
+                <p style="text-align:center; padding:20px; color:#888;" data-i18n="no_favorites">Нямате любими спирки.</p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ЕКРАН: НАСТРОЙКИ (КОМПАКТЕН + НОВ БУТОН) -->
+<!-- ЕКРАН: НАСТРОЙКИ -->
+    <div id="screen-settings" class="screen hidden" style="background-color: var(--background);">
+        <div class="screen-header sticky-header">
+            <h2 data-i18n="title_settings">Настройки</h2>
+        </div>
+        
+        <div class="screen-content centered-content" style="padding: 20px 16px;">
+            
+            <!-- СЕКЦИЯ: ОСНОВНИ -->
+            <div class="settings-section-title" data-i18n="settings_sec_basic">Основни</div>
+            <div class="settings-card">
+                
+                <!-- ГРУПА 1: ВИЗУАЛИЗАЦИЯ -->
+                <div class="settings-item clickable" onclick="toggleSettingsGroup('group-visual', 'arrow-visual')">
+                    <div class="settings-icon-box" style="background: #e3f2fd; color: #1565c0;">
+                        <span class="material-icons-round">palette</span>
+                    </div>
+                    <div class="settings-text-col">
+                        <span data-i18n="settings_group_visual">Визуализация</span>
+                    </div>
+                    <span id="arrow-visual" class="material-icons-round arrow-icon" style="transition: transform 0.3s;">expand_more</span>
+                </div>
+
+                <!-- СЪДЪРЖАНИЕ НА ВИЗУАЛИЗАЦИЯ (ВЪРНАТИ ЦВЕТОВЕ) -->
+                <div id="group-visual" class="settings-subgroup">
+                    <!-- ЕЗИК -->
+                    <div class="settings-item">
+                        <div class="settings-icon-box" style="background: #e3f2fd; color: #1565c0;">
+                            <span class="material-icons-round">language</span>
+                        </div>
+                        <div class="settings-text-col">
+                            <span data-i18n="settings_language">Език</span>
+                        </div>
+                        <select id="select-language" class="settings-select-box">
+                            <option value="bg">Български</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+
+                    <!-- ТЪМНА ТЕМА -->
+                    <div class="settings-item" id="btn-toggle-theme" style="cursor: pointer;">
+                        <div class="settings-icon-box" style="background: #212121; color: #FFD700;">
+                            <span class="material-icons-round">dark_mode</span>
+                        </div>
+                        <div class="settings-text-col">
+                            <span data-i18n="settings_dark_mode">Тъмна тема</span>
+                        </div>
+                        <div class="theme-switch">
+                            <div class="theme-switch-knob"></div>
+                        </div>
+                        <span id="icon-theme-toggle" style="display:none;"></span>
+                    </div>
+
+                    <!-- НАЧАЛЕН ЕКРАН -->
+                    <div class="settings-item">
+                        <div class="settings-icon-box" style="background: #fce4ec; color: #c2185b;">
+                            <span class="material-icons-round">home</span>
+                        </div>
+                        <div class="settings-text-col">
+                            <span data-i18n="settings_start_screen">Начален екран</span>
+                        </div>
+                        <select id="select-start-screen" class="settings-select-box">
+                            <option value="screen-search">Търсене</option>
+                            <option value="screen-lines">Линии</option>
+                            <option value="screen-favorites">Любими</option>
+                            <option value="screen-map">Карта</option>
+                        </select>
+                    </div>
+
+                    <!-- СОРТИРАНЕ -->
+                    <div class="settings-item no-border"> 
+                        <div class="settings-icon-box" style="background: #e8f5e9; color: #2e7d32;">
+                            <span class="material-icons-round">sort</span>
+                        </div>
+                        <div class="settings-text-col">
+                            <span data-i18n="settings_sorting">Сортиране</span>
+                        </div>
+                        <select id="select-sorting" class="settings-select-box">
+                            <option value="BY_TIME" data-i18n="sort_by_time">По време</option>
+                            <option value="BY_TYPE" data-i18n="sort_by_type">По тип</option>
+                        </select>
+                    </div>
+                </div>
+
+
+                <!-- ГРУПА 2: ФУНКЦИОНАЛНОСТИ -->
+                <div class="settings-item clickable" onclick="toggleSettingsGroup('group-func', 'arrow-func')" style="border-top: 1px solid var(--outline);">
+                    <div class="settings-icon-box" style="background: #e1f5fe; color: #0288d1;">
+                        <span class="material-icons-round">settings_suggest</span>
+                    </div>
+                    <div class="settings-text-col">
+                        <span data-i18n="settings_group_func">Функционалности</span>
+                    </div>
+                    <span id="arrow-func" class="material-icons-round arrow-icon" style="transition: transform 0.3s;">expand_more</span>
+                </div>
+
+                <!-- СЪДЪРЖАНИЕ НА ФУНКЦИОНАЛНОСТИ (ВЪРНАТИ ЦВЕТОВЕ) -->
+                <div id="group-func" class="settings-subgroup">
+                    <!-- Известия наблизо -->
+                    <div class="settings-item" id="btn-toggle-proximity" style="cursor: pointer;">
+                        <div class="settings-icon-box" style="background: #fff8e1; color: #f57f17;">
+                            <span class="material-icons-round">campaign</span>
+                        </div>
+                        <div class="settings-text-col">
+                            <span data-i18n="settings_proximity">Известия наблизо</span>
+                        </div>
+                        <div class="theme-switch" id="prox-switch-visual">
+                            <div class="theme-switch-knob"></div>
+                        </div>
+                    </div>
+
+                    <!-- Автоматично локализиране -->
+                    <div class="settings-item no-border" id="btn-toggle-autolocate" style="cursor: pointer;">
+                        <div class="settings-icon-box" style="background: #e1f5fe; color: #0288d1;">
+                            <span class="material-icons-round">near_me</span>
+                        </div>
+                        <div class="settings-text-col">
+                            <span data-i18n="settings_autolocate">Автоматично локализиране</span>
+                        </div>
+                        <div class="theme-switch" id="autolocate-switch-visual">
+                            <div class="theme-switch-knob"></div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- МОИТЕ НАПОМНЯНИЯ -->
+                <div class="settings-item clickable no-border" onclick="openActiveAlarmsScreen()" style="border-top: 1px solid var(--outline);">
+                    <div class="settings-icon-box" style="background: #e8f5e9; color: #2e7d32;">
+                        <span class="material-icons-round">alarm</span>
+                    </div>
+                    <div class="settings-text-col">
+                        <span data-i18n="my_alarms_title">Моите напомняния</span>
+                    </div>
+                    <span class="material-icons-round arrow-icon">chevron_right</span>
+                </div>
+
+            </div>
+
+
+            <!-- СЕКЦИЯ: ОЩЕ -->
+            <div class="settings-section-title" data-i18n="settings_sec_more">Още</div>
+            <div class="settings-card">
+                <!-- Share App -->
+                <div class="settings-item clickable" id="btn-share-app">
+                    <div class="settings-icon-box" style="background: #fff3e0; color: #ef6c00;">
+                        <span class="material-icons-round">share</span>
+                    </div>
+                    <div class="settings-text-col">
+                        <span data-i18n="settings_share">Сподели</span>
+                    </div>
+                    <div class="settings-right-widget btn-share-rect">
+                        <span class="material-icons-round" style="font-size: 18px; margin-right: 6px;">ios_share</span>
+                        <span>Link</span>
+                    </div>
+                </div>
+
+                <!-- Buy Coffee -->
+                <a href="https://revolut.me/yordanowzz" target="_blank" class="settings-item clickable" style="text-decoration: none;">
+                    <div class="settings-icon-box" style="background: #f3e5f5; color: #7b1fa2;">
+                        <span class="material-icons-round">coffee</span>
+                    </div>
+                    <div class="settings-text-col">
+                        <span style="color: var(--on-surface);" data-i18n="settings_buy_coffee">Купи ми кафе</span>
+                    </div>
+                    <img src="revolut_logo__1_-removebg-preview.png" alt="Revolut" class="settings-right-widget img-contain revolut-img-fix">
+                </a>
+
+                <!-- BACKUP & RESTORE (НОВ БУТОН) -->
+                <div class="settings-item clickable no-border" onclick="openBackupModal()">
+                    <div class="settings-icon-box" style="background: #e0f7fa; color: #006064;">
+                        <span class="material-icons-round">cloud_sync</span>
+                    </div>
+                    <div class="settings-text-col">
+                        <span data-i18n="settings_backup_title">Резервно копие</span>
+                    </div>
+                    <span class="material-icons-round arrow-icon">chevron_right</span>
+                </div>
+            </div>
+
+
+            <!-- СЕКЦИЯ: ИНФОРМАЦИЯ -->
+            <div class="settings-section-title" data-i18n="settings_sec_info">Информация</div>
+            <div class="settings-card">
+                <div class="settings-item no-border" onclick="openGenericModal('modal-about')" style="cursor:pointer;">
+                    <div class="settings-icon-box" style="background: #eceff1; color: #546e7a;">
+                        <span class="material-icons-round">info</span>
+                    </div>
+                    <div class="settings-text-col">
+                        <span data-i18n="settings_about">Относно</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <span id="app-version-display" style="color:var(--on-surface-variant); font-size:12px;">...</span>
+                        <span class="material-icons-round" style="color:var(--on-surface-variant); opacity:0.5; font-size:20px;">chevron_right</span>
+                    </div>
+                </div>
+            </div>
+<footer><span class="f-name">MADE BY @YORDANOWZ.COM @2026</span></footer>
+            <div class="watermark-signature">
+                yordanowz &copy;
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+
+<!-- MODAL: BACKUP & RESTORE -->
+<div id="modal-backup" class="modal-overlay hidden" style="z-index: 12000; align-items: center; justify-content: center; display: flex;">
+    <div class="modal-content" style="width: 90%; max-width: 400px; padding: 24px; border-radius: 20px;">
+        
+        <!-- Заглавие -->
+        <h3 style="margin-top: 0; margin-bottom: 8px; font-size: 20px;" data-i18n="settings_backup_title">Backup & Restore</h3>
+        
+        <!-- Описание -->
+        <p style="color: var(--on-surface-variant); font-size: 14px; margin-bottom: 24px; line-height: 1.4;" data-i18n="backup_modal_desc">
+            Направете резервно копие на вашите любими спирки и настройки.
+        </p>
+
+        <!-- Бутон 1: СЪЗДАЙ -->
+        <div class="backup-action-item" id="btn-trigger-export">
+            <div style="flex-grow: 1;">
+                <div class="backup-action-title" data-i18n="action_create_backup">Backup</div>
+                <div class="backup-action-desc" data-i18n="desc_create_backup">Saves configuration to file</div>
+            </div>
+            <span class="material-icons-round" style="color: var(--primary);">download</span>
+        </div>
+
+        <!-- Бутон 2: ВЪЗСТАНОВИ -->
+        <div class="backup-action-item" id="btn-trigger-import">
+            <div style="flex-grow: 1;">
+                <div class="backup-action-title" data-i18n="action_restore_backup">Restore Backup</div>
+                <div class="backup-action-desc" data-i18n="desc_restore_backup">Roll back from file</div>
+            </div>
+            <span class="material-icons-round" style="color: var(--primary);">upload</span>
+        </div>
+
+        <!-- Скрит input -->
+        <input type="file" id="import-file-input" accept=".json" style="display: none;" />
+
+        <button class="btn-close-modal" onclick="document.getElementById('modal-backup').classList.remove('active'); setTimeout(() => document.getElementById('modal-backup').classList.add('hidden'), 200);" style="margin-top: 10px; width: 100%; color: var(--on-surface-variant); background: transparent;" data-i18n="close">Затвори</button>
+    </div>
+</div>
+
+<!-- ======================================================= -->
+<!-- ТУК ЗАЛЕПИ НОВИЯ КОД (ЕКРАН АЛАРМИ + МОДАЛ) -->
+<!-- ======================================================= -->
+
+<!-- ЕКРАН: АКТИВНИ АЛАРМИ -->
+<div id="screen-active-alarms" class="screen hidden" style="background-color: var(--background);">
+    <div class="screen-header sticky-header">
+        <div style="display: flex; align-items: center;">
+            <button class="icon-btn" onclick="document.querySelector('[data-target=\'screen-settings\']').click()" style="margin-right: 8px;">
+                <span class="material-icons-round">arrow_back</span>
+            </button>
+            <h2 style="font-size: 18px;">Моите напомняния</h2>
+        </div>
+    </div>
+    <div id="active-alarms-list" class="screen-content centered-content" style="padding-top: 10px; padding-bottom: 80px;">
+        <!-- Тук ще се генерира списъкът с JS -->
+    </div>
+</div>
+
+<!-- МОДАЛ ЗА РЕДАКЦИЯ НА БУФЕРА -->
+<div id="modal-edit-alarm" class="modal-overlay hidden" style="z-index: 12000; align-items: center; justify-content: center; display: flex;">
+    <div class="modal-content" style="width: 300px; padding: 20px; border-radius: 20px;">
+        <h3 style="margin-top: 0;">Редакция</h3>
+        <p style="color:gray; font-size:13px;">Промени времето за предизвестие (мин):</p>
+        <input type="number" id="edit-alarm-buffer" class="alarm-input" style="text-align:center;">
+        <div style="display:flex; gap:10px; margin-top:16px;">
+            <button class="route-action-btn go" onclick="saveEditedAlarm()" style="flex:1; justify-content:center;">Запази</button>
+            <button class="btn-close-modal" onclick="document.getElementById('modal-edit-alarm').classList.remove('active')" style="flex:1; background:transparent; color:gray;">Отказ</button>
+        </div>
+    </div>
+</div>
+
+<!-- ======================================================= -->
+
+
+
+
+
+    <!-- ЕКРАН: СЪЗДАВАНЕ НА КОМБИНИРАНА СПИРКА -->
+    <div id="screen-create-custom" class="screen full-screen hidden" style="z-index: 7000;">
+        <div class="screen-header sticky-header">
+            <div style="display: flex; align-items: center;">
+                <button class="icon-btn" id="btn-close-custom-creator" style="margin-right: 8px;">
+                    <span class="material-icons-round">arrow_back</span>
+                </button>
+                <h2 style="font-size: 18px;" id="custom-creator-title" data-i18n="custom_title_create">Направи комбинирана спирка</h2>
+            </div>
+        </div>
+        
+        <div class="screen-content centered-content">
+            <div style="padding: 16px; background: var(--surface); border-bottom: 1px solid var(--outline);">
+                <label style="display:block; font-size:12px; color:var(--on-surface-variant); margin-bottom:4px;" data-i18n="custom_label_name">Име на групата</label>
+                <input type="text" id="custom-group-name" data-i18n-placeholder="custom_placeholder_name" placeholder="Напр. Вкъщи (Всички)" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; outline: none; background: transparent; color: var(--on-surface);">
+            </div>
+
+            <div class="custom-creator-search-row">
+                <div class="search-bar static-search custom-search-bar-fix">
+                    <span class="material-icons-round search-icon">search</span>
+                    <input type="text" id="custom-stop-search" data-i18n-placeholder="custom_placeholder_search" placeholder="Добави спирка...">
+                </div>
+                <button id="btn-open-map-selection" class="icon-btn-square">
+                    <span class="material-icons-round">map</span>
+                </button>
+            </div>
+                
+            <div style="padding: 0 16px;">
+                 <div id="custom-search-results" style="max-height: 150px; overflow-y: auto; background: var(--surface); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; display: none;"></div>
+                 <div style="font-weight: bold; margin-bottom: 8px; color: var(--on-surface);" data-i18n="custom_label_added">Добавени спирки:</div>
+                 <div id="custom-added-list" style="min-height: 50px;">
+                    <div style="text-align: center; color: #999; font-size: 14px; padding: 10px;" data-i18n="custom_no_added_stops">Няма добавени спирки</div>
+                 </div>
+            </div>
+            
+            <div style="padding: 16px;">
+                <button id="btn-save-custom-stop" class="route-action-btn go" style="width: 100%; justify-content: center; padding: 14px;" data-i18n="btn_create_stop">
+                    Създай спирка
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================= -->
+    <!-- GLOBAL NAVIGATION (BOTTOM) -->
+    <!-- ========================================= -->
+
+    <nav class="bottom-nav">
+        <button class="nav-item" data-target="screen-social">
+            <!-- ОБГРЪЩАМЕ ИКОНАТА В WRAPPER ЗА БАДЖА -->
+            <div class="icon-wrapper">
+                <span class="material-icons-round">groups</span>
+                <div id="badge-nav-social" class="notification-badge hidden">0</div>
+            </div>
+            <span class="nav-label" data-i18n="nav_social">Social</span>
+        </button>
+	    <button class="nav-item" data-target="screen-lines">
+            <span class="material-icons-round">directions_bus</span>
+            <span class="nav-label" data-i18n="nav_lines">Линии</span>
+        </button>
+        <button class="nav-item" data-target="screen-favorites">
+            <span class="material-icons-round">star</span>
+            <span class="nav-label" data-i18n="nav_favorites">Любими</span>
+        </button>
+        <button class="nav-item active" data-target="screen-map">
+            <span class="material-icons-round">map</span>
+            <span class="nav-label" data-i18n="nav_map">Карта</span>
+        </button>
+        <button class="nav-item" data-target="screen-settings">
+            <span class="material-icons-round">settings</span>
+            <span class="nav-label" data-i18n="nav_settings">Настр.</span>
+        </button>
+    </nav>
+
+
+    <!-- ========================================= -->
+    <!-- MODALS & OVERLAYS (Must be direct children of body) -->
+    <!-- ========================================= -->
+
+    <!-- RIDE ALONG BACKDROP & SHEET -->
+    <div id="ride-along-backdrop" class="ride-along-overlay-backdrop hidden"></div> 
+    <div id="screen-ride-along" class="bottom-sheet ride-along-sheet hidden">
+        <div id="ra-drag-zone" class="sheet-header-area">
+            <div class="sheet-handle-bar"><div class="sheet-handle"></div></div>
+            <div class="ra-header-row">
+                <div class="ra-title-box">
+                    <h2 id="ride-along-title">...</h2>
+                    <div id="ride-along-subtitle">...</div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+				 <!-- НОВИЯТ БУТОН ЗА СПОДЕЛИ -->
+        <button class="icon-btn close-btn" onclick="shareLiveRide()" id="btn-share-live" style="color: var(--primary);">
+            <span class="material-icons-round">share</span>
+        </button>
+                    <button class="icon-btn close-btn" onclick="minimizeRideAlong()">
+                        <span class="material-icons-round">remove</span>
+                    </button>
+                    <button class="icon-btn close-btn" onclick="closeRideAlong()">
+                        <span class="material-icons-round">close</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="ra-content">
+            <div id="ride-along-list" class="timeline-container"></div>
+            <div id="ride-along-vehicle" class="ra-vehicle-timeline-marker hidden">
+                <div id="vehicle-eta-bubble" class="ra-vehicle-eta-bubble">...</div>
+                <div class="ra-vehicle-core"><span id="vehicle-marker-label">...</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN BOTTOM SHEET (Stops) -->
+    <div id="bottom-sheet" class="bottom-sheet hidden">
+        <div id="sheet-drag-zone" class="sheet-header-area">
+            <div class="sheet-handle-bar"><div class="sheet-handle"></div></div>
+            <div class="sheet-title-row">
+                <h2 id="sheet-stop-name">...</h2>
+                <button class="icon-btn close-btn" id="btn-close-sheet">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+        </div>
+        <div class="sheet-actions-row">
+		<!-- НОВИЯТ БУТОН ЗА АЛАРМА -->
+             <button class="icon-btn" id="btn-alarm-stop"><span class="material-icons-round">alarm</span></button>
+            <button class="icon-btn" id="btn-refresh"><span class="material-icons-round">refresh</span></button>
+            <button class="icon-btn" id="btn-time-mode"><span class="material-icons-round">schedule</span></button>
+            <button class="icon-btn" id="btn-timetable"><div class="btn-text-stack"><span>Time</span><span>Table</span></div></button>
+            <button class="icon-btn" id="btn-fav-stop"><span class="material-icons-round">star_border</span></button>
+        </div>
+        <div class="divider"></div>
+        <div id="sheet-arrivals-list" class="arrivals-container sheet-content"></div>
+    </div>
+
+
+
+
+<!-- ROUTES SHEET -->
+<div id="routes-sheet" class="bottom-sheet hidden" style="z-index: 5500;">
+<div id="routes-drag-zone" class="sheet-header-area">
+    <div class="sheet-handle-bar"><div class="sheet-handle"></div></div>
+    <div class="sheet-title-row">
+        <button class="icon-btn close-btn hidden" id="btn-routes-back" style="margin-right: 8px;">
+            <span class="material-icons-round">arrow_back</span>
+        </button>
+        <h2 id="routes-sheet-title" style="flex-grow:1;">Маршрути</h2>
+        <!-- Важно: onclick="closeRoutesSheet()" -->
+        <button class="icon-btn close-btn" id="btn-close-routes" onclick="closeRoutesSheet()">
+            <span class="material-icons-round">close</span>
+        </button>
+    </div>
+</div>
+    
+    <!-- Списък с варианти -->
+    <div id="routes-list-content" class="sheet-content"></div>
+
+    <!-- НОВО: Детайли за избрания маршрут -->
+    <div id="routes-details-content" class="sheet-content hidden" style="background: var(--background); padding-top: 10px;"></div>
+</div>
+
+
+
+
+    <!-- MAP SELECTION PANEL -->
+    <div id="map-selection-panel" class="hidden" style="
+        position: absolute; 
+        bottom: 0; left: 0; right: 0; 
+        background: var(--surface); 
+        border-top-left-radius: 20px; border-top-right-radius: 20px;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+        padding: 16px;
+        z-index: 6000;
+        display: flex; flex-direction: column; gap: 10px;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    ">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-weight: bold; color: var(--on-surface);" data-i18n="map_sel_selected">Избрани спирки:</span>
+            <span id="selection-count" style="background: var(--primary); color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: bold;">0</span>
+        </div>
+        <div id="map-selection-list" style="display: flex; overflow-x: auto; gap: 8px; padding: 4px 0 12px 0; min-height: 40px;"></div>
+        <button id="btn-finish-selection" class="route-action-btn go" style="width: 100%; justify-content: center; padding: 12px; font-size: 16px;">
+            <span class="material-icons-round" style="margin-right: 8px;">check</span>
+            <span data-i18n="map_sel_done">Готово</span>
+        </button>
+    </div>
+
+    <!-- FILTER MODAL -->
+    <div id="modal-centered-filter" class="modal-overlay hidden" style="z-index: 9999; align-items: center; justify-content: center; display: flex;">
+        <div class="modal-content" style="width: 320px; border-radius: 24px; padding: 0; transform: none; max-width: 90%; background: var(--surface); overflow: hidden; transition: height 0.3s ease;">
+            <div style="padding: 16px; border-bottom: 1px solid var(--outline); display: flex; align-items: center; justify-content: space-between; background: var(--surface);">
+                <button id="btn-filter-back" class="icon-btn-small hidden" style="margin-right: 8px;">
+                    <span class="material-icons-round">arrow_back</span>
+                </button>
+                <h3 id="filter-title" style="margin: 0; font-size: 18px; flex-grow: 1; text-align: center;">Филтри</h3>
+                <button class="icon-btn-small" onclick="closeCenteredFilter()">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            <div id="filter-content-body" style="padding: 16px; min-height: 150px;"></div>
+        </div>
+    </div>
+
+    <!-- MODAL: SELECT VEHICLE -->
+    <div id="modal-select-vehicle" class="modal-overlay hidden" style="z-index: 9999; align-items: center; justify-content: center; display: flex;">
+        <div class="modal-content" style="width: 340px; max-height: 80vh; display: flex; flex-direction: column; padding: 0;">
+            <div style="padding: 16px; border-bottom: 1px solid var(--outline); text-align: center; font-weight: bold;">
+                Избери превозно средство
+            </div>
+            <div id="vehicle-select-list" style="overflow-y: auto; flex: 1; min-height: 100px;"></div>
+            <div style="padding: 12px;">
+                <button class="btn-close-modal" onclick="closeSelectVehicleModal()" style="width: 100%; color: var(--on-surface-variant);">Отказ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: LOCATION PICKER -->
+    <div id="modal-location-picker" class="modal-overlay hidden" style="z-index: 9999; align-items: center; justify-content: center; display: flex;">
+        <div class="modal-content" style="width: 90%; max-width: 400px; padding: 16px;">
+            <h3 style="margin-top: 0; text-align: center;">Посочи мястото</h3>
+            <p style="font-size: 12px; text-align: center; color: #666; margin-bottom: 10px;">Можеш да докладваш само в радиус от 500м.</p>
+            <div id="location-picker-map">
+                <span class="material-icons-round picker-center-marker">place</span>
+            </div>
+            <button id="btn-submit-location-report" class="route-action-btn go" style="width: 100%; justify-content: center;">
+                Потвърди
+            </button>
+            <button class="btn-close-modal" onclick="closeLocationPicker()" style="width: 100%; margin-top: 8px; color: var(--on-surface-variant);">Отказ</button>
+        </div>
+    </div>
+
+    <!-- MODAL: FAVORITES MENU -->
+    <div id="fav-menu-modal" class="modal-overlay hidden" style="z-index: 11000; align-items: center; justify-content: center; display: flex;">
+        <div class="modal-content" style="width: 300px; border-radius: 20px; padding: 20px; transform: translateY(0); max-width: 90%;">
+            <h3 id="fav-menu-title" style="margin-top: 0; text-align: center; margin-bottom: 16px; font-size: 18px;">Опции</h3>
+            
+            <div id="fav-step-main">
+                <div class="action-item" id="action-fav-toggle" style="background: var(--background); margin-bottom: 8px; border-radius: 12px;">
+                    <span class="material-icons-round" id="fav-toggle-icon" style="color: #FFD700;">star</span>
+                    <span id="fav-toggle-text" style="font-weight: 500;">Добави в Любими</span>
+                </div>
+                <div class="action-item" id="action-fav-merge" style="background: var(--background); margin-bottom: 16px; border-radius: 12px;">
+                    <span class="material-icons-round" style="color: var(--primary);">merge_type</span>
+                    <span data-i18n="btn_fav_merge" style="font-weight: 500;">Обедини спирка</span>
+                </div>
+                <button class="btn-close-modal" onclick="closeFavMenu()" data-i18n="cancel" style="color: var(--primary);">Отказ</button>
+            </div>
+
+            <div id="fav-step-merge-type" class="hidden">
+                <div class="action-item" id="action-create-new" style="background: var(--background); margin-bottom: 8px; border-radius: 12px;">
+                    <span class="material-icons-round" style="color: var(--primary);">add_circle</span>
+                    <span data-i18n="btn_merge_new" style="font-weight: 500;">Създай нова група</span>
+                </div>
+                <div class="action-item" id="action-merge-existing" style="background: var(--background); margin-bottom: 16px; border-radius: 12px;">
+                    <span class="material-icons-round" style="color: var(--primary);">format_list_bulleted</span>
+                    <span data-i18n="btn_merge_existing" style="font-weight: 500;">Обедини с...</span>
+                </div>
+                <button class="btn-close-modal" onclick="goToFavStep('main')" data-i18n="btn_back" style="color: var(--primary);">Назад</button>
+            </div>
+
+            <div id="fav-step-list" class="hidden">
+                <div style="font-size: 13px; color: #888; margin-bottom: 8px; text-align: center;" data-i18n="label_select_target">Избери с какво да обединиш:</div>
+                <div id="merge-targets-list" style="max-height: 200px; overflow-y: auto; margin-bottom: 16px; border: 1px solid var(--outline); border-radius: 8px;"></div>
+                <button class="btn-close-modal" onclick="goToFavStep('merge-type')" data-i18n="btn_back" style="color: var(--primary);">Назад</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LINE ACTION SHEET -->
+    <div id="line-action-sheet" class="bottom-sheet hidden" style="z-index: 6500;">
+        <div class="sheet-header-area">
+            <div class="sheet-handle-bar"><div class="sheet-handle"></div></div>
+            <div class="sheet-title-row" style="justify-content: center;">
+                <h2 id="line-action-title" style="text-align: center; padding: 0;">...</h2>
+            </div>
+        </div>
+        <div class="sheet-content" style="padding-top: 0;">
+            <div class="action-list">
+                <div class="action-item" id="btn-action-map">
+                    <span class="material-icons-round">map</span>
+                    <span data-i18n="action_map_route">Маршрут върху карта</span>
+                </div>
+                <div class="action-item" id="btn-action-schedule">
+                    <span class="material-icons-round">list</span>
+                    <span data-i18n="action_stops_schedule">Спирки и разписания</span>
+                </div>
+            </div>
+            <button class="btn-close-modal" id="btn-close-line-action" style="margin-top: 10px;" data-i18n="cancel">Отказ</button>
+        </div>
+    </div>
+
+
+<!-- LINE MODAL -->
+<!-- LINE MODAL (Вече като Bottom Sheet) -->
+<div id="line-modal" class="modal-overlay hidden">
+    <!-- Махаме padding-top от тук, за да е плътно до дръжката -->
+    <div class="modal-content" style="padding-top: 0;"> 
+        
+        <!-- НОВО: Дръжка за влачене -->
+        <div id="line-modal-drag-handle" class="sheet-header-area" style="border-radius: 20px 20px 0 0;">
+            <div class="sheet-handle-bar"><div class="sheet-handle"></div></div>
+        </div>
+
+        <!-- Съдържание с падинг -->
+        <div style="padding: 0 20px 20px 20px;">
+            
+            <!-- ЗАГЛАВИЕ -->
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 16px;">
+                <h3 id="modal-line-title" style="margin: 0; font-size: 18px; max-width: 80%;">Линия...</h3>
+                <div id="modal-header-badge"></div>
+            </div>
+
+            <!-- Каре за Отклонение -->
+            <div id="modal-deviation-container" class="hidden"></div>
+            
+            <!-- Каре за Дистанция -->
+            <div id="modal-dist-warning" style="margin-bottom: 12px;"></div>
+
+            <!-- СЕКЦИЯ ЗА ДОКЛАДВАНЕ -->
+            <div id="modal-report-section">
+                <div style="font-size: 11px; color: var(--on-surface-variant); margin-bottom: 6px; font-weight: bold; text-transform: uppercase;">
+                    Състояние на превозното средство:
+                </div>
+                <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <button class="report-compact-btn" onclick="submitReport('HOT')" style="background: #fff3e0; color: #ef6c00; border: 1px solid #ffe0b2; flex: 1 1 45%;">
+                        <img src="hot.png" style="width: 20px; height: 20px;">
+                        <span>Жега</span>
+                    </button>
+                    <button class="report-compact-btn" onclick="submitReport('COLD')" style="background: #e1f5fe; color: #0288d1; border: 1px solid #b3e5fc; flex: 1 1 45%;">
+                        <img src="cold.png" style="width: 20px; height: 20px;">
+                        <span>Студ</span>
+                    </button>
+                    <button class="report-compact-btn" onclick="submitReport('DIRTY')" style="background: #efebe9; color: #5d4037; border: 1px solid #d7ccc8; flex: 1 1 45%;">
+                        <img src="stain.png" style="width: 20px; height: 20px;">
+                        <span>Мръсно</span>
+                    </button>
+                    <button class="report-compact-btn" onclick="submitReport('CROWDED')" style="background: #f3e5f5; color: #7b1fa2; border: 1px solid #e1bee7; flex: 1 1 45%;">
+                        <img src="crowded.png" style="width: 20px; height: 20px;">
+                        <span>Претъпкан</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- СЕКЦИЯ ЗА ГЛАСУВАНЕ -->
+            <div id="modal-vote-section" class="hidden" style="margin-bottom: 16px; background: var(--background); padding: 10px; border-radius: 12px;">
+                <div style="font-size: 13px; text-align: center; margin-bottom: 8px;">
+                    Докладвано: <b id="modal-vote-label">...</b>. Вярно ли е?
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button id="modal-btn-vote-up" class="vote-btn upvote" style="flex: 1; justify-content: center; padding: 10px;">
+                        <span class="material-icons-round">thumb_up</span> Да
+                    </button>
+                    <button id="modal-btn-vote-down" class="vote-btn downvote" style="flex: 1; justify-content: center; padding: 10px;">
+                        <span class="material-icons-round">thumb_down</span> Не
+                    </button>
+                </div>
+            </div>
+
+            <!-- БУТОНИ ЗА ДЕЙСТВИЕ (Това липсваше и чупеше JS-а!) -->
+            <div class="modal-actions" style="border-top: 1px solid var(--outline); padding-top: 16px;">
+                <div class="action-item" id="action-show-route" style="margin-bottom: 8px;">
+                    <span class="material-icons-round">map</span>
+                    <span data-i18n="action_map_route">Маршрут върху карта</span>
+                </div>
+                <div class="action-item" id="action-track-live">
+                    <span class="material-icons-round">track_changes</span>
+                    <span data-i18n="action_track_live">Проследи на живо</span>
+                </div>
+            </div>
+
+            <button class="btn-close-modal" onclick="closeModal()" data-i18n="close" style="margin-top: 10px;">Затвори</button>
+        </div>
+    </div>
+</div>
+
+    <!-- MODAL: CHANGELOG -->
+    <div id="modal-changelog" class="modal-overlay hidden" style="z-index: 9999;">
+        <div class="modal-content">
+            <div style="text-align: center; margin-bottom: 16px;">
+                <span class="material-icons-round" style="font-size: 48px; color: var(--primary);">campaign</span>
+            </div>
+            <h3 style="text-align: center; margin: 0 0 8px 0;">
+                Ново във версия <span id="changelog-version"></span>
+            </h3>
+            <div id="changelog-list" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;"></div>
+            <button class="btn-close-modal" id="btn-close-changelog" style="background: var(--primary); color: white; border-radius: 12px; padding: 12px; width: 100%;">
+                Разбрах!
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: SHARE OPTIONS -->
+    <div id="modal-share-options" class="modal-overlay hidden" style="z-index: 9999; align-items: center; justify-content: center; display: flex;">
+        <div class="modal-content" style="width: 320px; border-radius: 20px; padding: 24px; transform: translateY(0); max-width: 90%;">
+            <h3 style="margin-top: 0; text-align: center; margin-bottom: 20px; font-size: 18px;" data-i18n="share_modal_title">Избери версия за споделяне</h3>
+
+        <div class="list-item" onclick="window.open('https://discord.gg/b7KfTBzXwg', '_blank')" style="border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-bottom: 10px;">
+            <div class="list-icon-box" style="background:rgba(25,118,210,0.1); color:#1976D2;"><span class="material-icons-round">groups</span></div>
+            <div class="list-content"><div class="list-title" style="font-size:14px;" data-i18n="social_item_group">Discord Group</div></div>
+            <span class="material-icons-round" style="color:#aaa;">chevron_right</span>
+        </div>
+                <div class="list-item" onclick="window.open('https://yordanowz.com/', '_blank')" style="border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-bottom: 10px;">
+            <div class="list-icon-box" style="background:rgba(25,118,210,0.1); color:#ce0d7e;"><span class="material-icons-round">groups</span></div>
+            <div class="list-content"><div class="list-title" style="font-size:14px;" data-i18n="YORDANOWZ HUB">YORDANOWZ HUB</div></div>
+            <span class="material-icons-round" style="color:#aaa;">chevron_right</span>
+        </div>
+
+            <button id="btn-share-web-link" class="action-item" style="width: 100%; justify-content: center; background: #e3f2fd; color: #1565c0; border: none; font-size: 15px; margin-bottom: 20px;">
+                <svg viewBox="0 0 384 512" width="18" height="18" style="fill: #1565c0; margin-right: 10px;">
+                    <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-54.5-120.8-61.7-111.9zM209.6 64c3.9-29.3 26.2-54.7 58.2-53.4 6.2 29.7-18.1 59.3-58.2 53.4z"/>
+                </svg>
+                iPhone / PC (Web)
+            </button>
+            <button class="btn-close-modal" onclick="closeShareModal()" style="color: var(--on-surface-variant); background: transparent;" data-i18n="cancel">Отказ</button>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD CHOICE -->
+    <div id="modal-add-choice" class="modal-overlay hidden" style="z-index: 9999; align-items: center; justify-content: center; display: flex;">
+        <div class="modal-content" style="width: 320px; border-radius: 20px; padding: 24px; transform: translateY(0); max-width: 90%;">
+            <h3 style="margin-top: 0; text-align: center; margin-bottom: 20px; font-size: 18px;" data-i18n="add_choice_title">Какво искате да добавите?</h3>
+            <div style="display: flex; gap: 12px;">
+                <div id="btn-choice-single" class="choice-card" style="flex: 1; background: #e3f2fd; border-radius: 12px; padding: 16px 8px; text-align: center; cursor: pointer; border: 1px solid #bbdefb;">
+                    <span class="material-icons-round" style="font-size: 32px; color: var(--primary); margin-bottom: 8px;">add_location_alt</span>
+                    <div style="font-weight: bold; font-size: 13px; color: #0d47a1;" data-i18n="add_choice_single">Единични спирки</div>
+                </div>
+                <div id="btn-choice-group" class="choice-card" style="flex: 1; background: #e0f2f1; border-radius: 12px; padding: 16px 8px; text-align: center; cursor: pointer; border: 1px solid #b2dfdb;">
+                    <span class="material-icons-round" style="font-size: 32px; color: #00695c; margin-bottom: 8px;">merge_type</span>
+                    <div style="font-weight: bold; font-size: 13px; color: #004d40;" data-i18n="add_choice_group">Комбинирана спирка</div>
+                </div>
+            </div>
+            <button class="btn-close-modal" onclick="document.getElementById('modal-add-choice').classList.remove('active'); setTimeout(() => document.getElementById('modal-add-choice').classList.add('hidden'), 200);" style="margin-top: 20px; color: var(--on-surface-variant); background: transparent; width: 100%;" data-i18n="cancel">Отказ</button>
+        </div>
+    </div>
+
+    <!-- MINIMIZED WIDGET -->
+    <div id="minimized-live-widget" class="hidden" onclick="maximizeRideAlong()">
+        <div id="min-widget-eta" class="min-widget-eta">...</div>
+        <div id="min-widget-line" class="min-widget-line">...</div>
+        <div id="min-widget-live" class="min-widget-live-badge">LIVE</div>
+    </div>
+
+    <!-- MODAL: SUGGESTION -->
+    <div id="modal-suggestion" class="modal-overlay hidden" style="z-index: 9999; align-items: center; justify-content: center; display: flex;">
+        <div class="modal-content" style="width: 320px; padding: 24px; border-radius: 20px;">
+            <h3 style="text-align: center; margin-top: 0;">Вашите идеи</h3>
+            <p style="color: #666; font-size: 13px; text-align: center;">Напишете какво да подобрим или добавим в приложението:</p>
+            <textarea id="suggestion-text" rows="5" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-family: sans-serif; resize: none;"></textarea>
+            <button onclick="submitSuggestionToServer()" class="route-action-btn go" style="width: 100%; margin-top: 16px; justify-content: center;">Изпрати</button>
+            <button class="btn-close-modal" onclick="document.getElementById('modal-suggestion').classList.remove('active'); setTimeout(()=>document.getElementById('modal-suggestion').classList.add('hidden'), 200);" style="width: 100%; color: #666;">Отказ</button>
+        </div>
+    </div>
+
+    <!-- MODAL: ADMIN PANEL -->
+    <div id="modal-admin-suggestions" class="modal-overlay hidden" style="z-index: 10000; align-items: center; justify-content: center; display: flex;">
+        <div class="modal-content" style="width: 90%; max-width: 500px; max-height: 90vh; display: flex; flex-direction: column;">
+            <div style="padding: 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0;">Админ Панел</h3>
+                <span class="material-icons-round" onclick="closeAdminSuggestions()" style="cursor: pointer;">close</span>
+            </div>
+            <div style="flex: 1; overflow-y: auto; padding: 16px; background: #f5f5f5;">
+                <h4 style="margin-top: 0; color: var(--primary);">📥 Предложения</h4>
+                <div id="admin-suggestions-list" style="margin-bottom: 20px;"></div>
+                <hr style="border: 0; border-top: 2px solid #ddd; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #d32f2f;">🚨 Активни Сигнали</h4>
+                <div id="admin-reports-list"></div>
+                <hr style="border: 0; border-top: 2px solid #ddd; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #555;">🚫 Баннати Потребители</h4>
+                <div id="admin-banned-users-list" style="padding-bottom: 20px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDIT NICKNAME -->
+    <div id="modal-edit-nickname" class="modal-overlay hidden" style="z-index: 9999; align-items: center; justify-content: center; display: flex;">
+        <div class="modal-content" style="width: 300px; padding: 24px; border-radius: 20px;">
+            <h3 style="text-align: center; margin-top: 0;">Смяна на име</h3>
+            <input type="text" id="edit-nickname-input" class="nickname-input" style="width:100%; margin-bottom:16px;">
+            <button onclick="confirmNicknameChange()" class="route-action-btn go" style="width: 100%; justify-content: center;">Запази</button>
+            <button class="btn-close-modal" onclick="document.getElementById('modal-edit-nickname').classList.remove('active'); setTimeout(()=>document.getElementById('modal-edit-nickname').classList.add('hidden'), 200);" style="width: 100%; color: #666; margin-top:10px; background:none; border:none; cursor:pointer;">Отказ</button>
+        </div>
+    </div>
+
+<!-- MODAL: ROADMAP & FEEDBACK -->
+<div id="modal-roadmap" class="modal-overlay hidden" style="z-index: 9500; align-items: center; justify-content: center; display: flex;">
+    <div class="modal-content" style="width: 95%; max-width: 450px; height: 85vh; display: flex; flex-direction: column; padding: 0; background: var(--surface);">
+        
+        <!-- 1. HEADER ROW: CLOSE BUTTON ONLY -->
+        <div style="display: flex; justify-content: flex-end; padding: 8px 12px 0 12px; background: var(--surface);">
+            <div style="cursor: pointer; padding: 4px;" onclick="closeRoadmapModal()">
+                <span class="material-icons-round" style="color: var(--on-surface-variant); font-size: 24px;">close</span>
+            </div>
+        </div>
+
+        <!-- 2. TABS ROW: VERTICAL STYLE -->
+        <div style="display: flex; border-bottom: 1px solid var(--outline); background: var(--surface); padding-bottom: 0;">
+            
+            <!-- TAB 1: VOTE -->
+            <div id="tab-roadmap-vote" class="roadmap-tab active" onclick="switchRoadmapTab('vote')">
+                <span class="material-icons-round">how_to_vote</span>
+                <span class="roadmap-tab-label" data-i18n="tab_vote">Гласувай</span>
+            </div>
+
+            <!-- TAB 2: SUBMIT -->
+            <div id="tab-roadmap-submit" class="roadmap-tab" onclick="switchRoadmapTab('submit')">
+                <span class="material-icons-round">rate_review</span>
+                <span class="roadmap-tab-label" data-i18n="tab_submit">Изпрати</span>
+            </div>
+
+            <!-- TAB 3: SENT -->
+            <div id="tab-roadmap-sent" class="roadmap-tab" onclick="switchRoadmapTab('sent')">
+                <div class="tab-content-wrapper">
+                    <span class="material-icons-round">send</span>
+                    <span class="roadmap-tab-label" data-i18n="roadmap_tab_sent">Изпратени</span>
+                    
+                    <!-- БАДЖ (Позициониран спрямо wrapper-а) -->
+                    <div id="badge-tab-sent" class="notification-badge hidden" style="top: -2px; right: -8px;">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTENT: VOTE -->
+        <div id="view-roadmap-vote" class="roadmap-view" style="flex: 1; overflow-y: auto; padding: 16px; background: var(--background);">
+            <div style="text-align: center; color: var(--on-surface-variant); font-size: 13px; margin-bottom: 12px;" data-i18n="txt_roadmap_intro">
+                Гласувайте за функциите, които искате да видите в следващата версия!
+            </div>
+            <div class="roadmap-sort-row" style="display:flex; gap:8px; margin-bottom:16px; justify-content:center;">
+                <div id="sort-votes" class="sort-chip active" onclick="setRoadmapSort('VOTES')">
+                    <span class="material-icons-round">trending_up</span> <span data-i18n="sort_top">Топ</span>
+                </div>
+                <div id="sort-date" class="sort-chip" onclick="setRoadmapSort('DATE')">
+                    <span class="material-icons-round">calendar_today</span> <span data-i18n="sort_new">Най-нови</span>
+                </div>
+            </div>
+            <div id="roadmap-list-container">Loading...</div>
+        </div>
+
+        <!-- CONTENT: SUBMIT -->
+        <div id="view-roadmap-submit" class="roadmap-view hidden" style="padding: 20px;">
+            <h3 style="margin-top: 0; color: var(--on-surface);" data-i18n="btn_roadmap_title">Свържете се с нас</h3>
+            <label style="display: block; margin-bottom: 8px; font-weight: bold; color: var(--on-surface-variant);" data-i18n="lbl_msg_type">Тип съобщение:</label>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <div id="opt-feature" class="feedback-type-opt active" onclick="setFeedbackType('FEATURE')">
+                    <span class="material-icons-round">lightbulb</span> <span data-i18n="opt_feature">Предложение</span>
+                </div>
+                <div id="opt-bug" class="feedback-type-opt" onclick="setFeedbackType('BUG')">
+                    <span class="material-icons-round">bug_report</span> <span data-i18n="opt_bug">Проблем</span>
+                </div>
+            </div>
+            <label style="display: block; margin-bottom: 8px; font-weight: bold; color: var(--on-surface-variant);" data-i18n="lbl_desc">Описание:</label>
+            <textarea id="feedback-input" rows="6" style="width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--outline); background: var(--surface); color: var(--on-surface); font-family: sans-serif; resize: none;"></textarea>
+            <button onclick="submitFeedbackForm()" class="route-action-btn go" style="width: 100%; margin-top: 20px; justify-content: center; padding: 14px;" data-i18n="btn_send">Изпрати</button>
+        </div>
+
+        <!-- CONTENT: SENT (CHAT) -->
+        <div id="view-roadmap-sent" class="roadmap-view hidden" style="flex: 1; overflow-y: auto; padding: 16px; background: var(--background);">
+            <div id="roadmap-sent-container"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: PROXIMITY ALERT (WAZE STYLE) -->
+<div id="modal-proximity-alert" class="modal-overlay hidden" style="z-index: 12000; align-items: center; justify-content: center; display: flex;">
+    <div class="modal-content" style="width: 90%; max-width: 360px; padding: 20px; border-radius: 20px; text-align: center;">
+        
+        <!-- Заглавие -->
+        <h3 id="prox-alert-title" style="margin: 0 0 8px 0; font-size: 18px;">Внимание!</h3>
+        <p id="prox-alert-desc" style="color: #666; font-size: 14px; margin-bottom: 16px;">...</p>
+
+        <!-- Мини карта -->
+        <div id="prox-alert-map" style="width: 100%; height: 200px; border-radius: 12px; margin-bottom: 20px; background: #eee;"></div>
+
+        <!-- Бутони -->
+        <div style="display: flex; gap: 12px;">
+            <button id="btn-prox-no" class="vote-btn downvote" style="flex: 1; padding: 12px; justify-content: center; font-size: 14px; border: 1px solid #d32f2f; color: #d32f2f; border-radius: 12px;">
+                <span class="material-icons-round" style="margin-right: 6px;">thumb_down</span>
+                Не, няма
+            </button>
+            <button id="btn-prox-yes" class="vote-btn upvote" style="flex: 1; padding: 12px; justify-content: center; font-size: 14px; background: #2e7d32; color: white; border: none; border-radius: 12px;">
+                <span class="material-icons-round" style="margin-right: 6px;">thumb_up</span>
+                Да, вярно е
+            </button>
+        </div>
+        
+        <button onclick="closeProximityModal()" style="margin-top: 12px; background: none; border: none; color: #999; text-decoration: underline; cursor: pointer;">
+            Затвори
+        </button>
+    </div>
+</div>
+
+
+<!-- SHEET: HELP (Помощ) -->
+<div id="modal-help" class="modal-overlay hidden" style="z-index: 12000; align-items: center; justify-content: center; display: flex;">
+    <div class="modal-content" style="width: 320px; border-radius: 20px; padding: 24px; transform: translateY(0); max-width: 90%;">
+        <h3 style="margin-top:0; text-align:center; margin-bottom:16px;" data-i18n="social_sheet_luggage_title">Забравен багаж</h3>
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
+            <button onclick="window.location.href='tel:029212100'" style="flex:1; height:50px; background:#007DC5; color:white; border:none; border-radius:12px; font-weight:bold; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                <span class="material-icons-round" style="font-size:18px;">subway</span>
+                <span style="font-size:10px;" data-i18n="social_luggage_metro">METRO</span>
+            </button>
+            <button onclick="window.location.href='tel:070013233'" style="flex:1; height:50px; background:#BE1E2D; color:white; border:none; border-radius:12px; font-weight:bold; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                <span class="material-icons-round" style="font-size:18px;">directions_bus</span>
+                <span style="font-size:10px;" data-i18n="social_luggage_ground">GROUND</span>
+            </button>
+        </div>
+        
+        <div class="divider"></div>
+        <br>
+        
+
+
+        <button class="btn-close-modal" onclick="closeGenericModal('modal-help')" style="margin-top: 20px; width: 100%; color: #666; background: transparent;" data-i18n="close">Затвори</button>
+    </div>
+</div>
+
+<!-- SHEET: INFO (Инфо) -->
+<div id="modal-info" class="modal-overlay hidden" style="z-index: 12000; align-items: center; justify-content: center; display: flex;">
+    <div class="modal-content" style="width: 320px; border-radius: 20px; padding: 24px; transform: translateY(0); max-width: 90%;">
+        
+        <h3 style="margin-top:0; text-align:center; margin-bottom:16px;" data-i18n="social_menu_community">Общност</h3>
+        
+        <div class="list-item" onclick="closeGenericModal('modal-info'); document.getElementById('btn-share-app').click()" style="border: 1px solid #eee; border-radius: 12px; padding: 10px;">
+            <div class="list-icon-box" style="background:rgba(239,108,0,0.1); color:#ef6c00;"><span class="material-icons-round">share</span></div>
+            <div class="list-content"><div class="list-title" style="font-size:14px;" data-i18n="social_item_share">Share App</div></div>
+            <span class="material-icons-round" style="color:#aaa;">chevron_right</span>
+        </div>
+
+        <button class="btn-close-modal" onclick="closeGenericModal('modal-info')" style="margin-top: 20px; width: 100%; color: #666; background: transparent;" data-i18n="close">Затвори</button>
+    </div>
+</div>
+
+<!-- SHEET: ABOUT (Относно) -->
+<div id="modal-about" class="modal-overlay hidden" style="z-index: 12000; align-items: center; justify-content: center; display: flex;">
+    <div class="modal-content" style="width: 320px; border-radius: 20px; padding: 24px; transform: translateY(0); max-width: 90%;">
+        <div style="text-align:center; margin-bottom:20px;">
+            <h2 style="margin:0; font-size:22px;" data-i18n="settings_about">Относно</h2>
+            <div style="color:gray; margin-top:4px; font-size:14px;">Version <span id="about-version-display">...</span></div>
+        </div>
+  <div class="divider"></div>
+        <br>
+        
+        <div class="list-item" onclick="window.open('https://discord.gg/b7KfTBzXwg', '_blank')" style="border: 1px solid #eee; border-radius: 12px; padding: 10px; margin-bottom: 10px;">
+            <div class="list-icon-box" style="background:rgba(25,118,210,0.1); color:#1976D2;"><span class="material-icons-round">groups</span></div>
+            <div class="list-content"><div class="list-title" style="font-size:14px;" data-i18n="social_item_group">Discord Group</div></div>
+            <span class="material-icons-round" style="color:#aaa;">chevron_right</span>
+        </div>
+        
+
+        <button class="btn-close-modal" onclick="closeGenericModal('modal-about')" style="margin-top: 20px; width: 100%; color: #666; background: transparent;" data-i18n="close">Затвори</button>
+    </div>
+</div>
+
+
+<!-- MODAL: BATTERY WARNING -->
+<div id="modal-battery-warning" class="modal-overlay hidden" style="z-index: 13000; align-items: center; justify-content: center; display: flex;">
+    <div class="modal-content" style="width: 90%; max-width: 350px; padding: 24px; border-radius: 20px; text-align: center;">
+        <span class="material-icons-round" style="font-size: 48px; color: #F57C00; margin-bottom: 16px;">battery_alert</span>
+        
+        <h3 style="margin: 0 0 12px 0;">Важна настройка</h3>
+        
+        <p style="font-size: 14px; color: #444; line-height: 1.5; margin-bottom: 20px;">
+            За да работи алармата, когато телефонът е заключен, трябва да премахнете ограниченията на батерията за това приложение.
+        </p>
+
+        <div style="background: #f5f5f5; padding: 12px; border-radius: 8px; font-size: 12px; text-align: left; color: #333; margin-bottom: 20px;">
+            1. Отворете <b>Настройки</b> на телефона.<br>
+            2. Отидете в <b>Apps (Приложения)</b> -> <b>Sofia Yrd Maps</b> (или браузъра).<br>
+            3. Изберете <b>Battery (Батерия)</b>.<br>
+            4. Изберете <b>Unrestricted (Без ограничения)</b>.
+        </div>
+
+        <button class="route-action-btn go" onclick="closeBatteryWarning()" style="width: 100%; justify-content: center;">
+            Разбрах, направих го
+        </button>
+    </div>
+</div>
+<!-- ЗВУК ЗА АЛАРМА -->
+<!-- Използваме стандартен звук, може да се смени с файл -->
+<!-- <audio id="alarm-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio> -->
+<!-- ЗВУК ЗА АЛАРМА (ЛОКАЛЕН) -->
+<!-- ТИХО АУДИО (ФОНОВ РЕЖИМ) -->
+
+
+
+<!-- ДЕБЪГ КОНЗОЛА -->
+<!-- <div id="debug-console" style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 200px; /* Малко по-високо */
+    background: rgba(0, 0, 0, 0.85);
+    color: #00ff00;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 10px;
+    overflow-y: scroll; /* Позволява скрол */
+    z-index: 20000;
+    pointer-events: auto; /* ВАЖНО: Позволява ти да пипаш и скролваш конзолата */
+    white-space: pre-wrap; /* За да пренася дългите редове */
+">
+    === SYSTEM LOG STARTED ===<br>
+</div> -->
+
+
+
+
+
+
+
+<!-- ТИХО АУДИО (NoSleep версия) -->
+<!-- ФОНОВО АУДИО (Бял шум за поддържане на процеса) -->
+<audio id="background-audio" loop playsinline preload="auto" style="display:none;">
+    <source src="silence.mp3" type="audio/mpeg">
+</audio>
+
+
+<!-- АЛАРМА (ИСТИНСКИ ЗВУК) -->
+<!-- Сложи тук твоя линк от GitHub или локалния файл -->
+<audio id="alarm-sound" preload="auto" playsinline x-webkit-airplay="allow">
+    <source src="./custom_alarm.mp3" type="audio/mpeg">
+</audio>
+
+
+
+
+
+
+
+<!-- MODAL: ALARM WIZARD -->
+<div id="modal-alarm-wizard" class="modal-overlay hidden" style="z-index: 11000; align-items: center; justify-content: center; display: flex;">
+    <div class="modal-content" style="width: 95%; max-width: 400px; max-height: 85vh; display: flex; flex-direction: column; padding: 20px; border-radius: 24px;">
+        
+        <!-- HEADER -->
+        <div style="margin-bottom: 16px;">
+            <h3 id="alarm-wizard-title" style="margin: 0; font-size: 20px;">Настрой аларма</h3>
+            <div id="alarm-wizard-subtitle" style="color: gray; font-size: 13px; margin-top: 4px;">...</div>
+        </div>
+
+        <!-- CONTENT CONTAINER -->
+        <div id="alarm-wizard-content" style="flex: 1; overflow-y: auto; min-height: 100px;">
+            <!-- Тук ще се генерират стъпките с JS -->
+        </div>
+
+        <!-- FOOTER BUTTONS -->
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; padding-top: 10px; border-top: 1px solid var(--outline);">
+            <button class="btn-close-modal" id="btn-alarm-cancel" style="width: auto; color: var(--on-surface-variant); font-size: 14px;">Отказ</button>
+            <!-- Бутонът "Напред/Готово" ще се генерира динамично -->
+        </div>
+    </div>
+</div>
+    <!-- ========================================= -->
+    <!-- SCRIPTS -->
+    <!-- ========================================= -->
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script 
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAZFr-aGI2ig4ruPu58bx7G5WqN1vTJbks&libraries=places&language=bg&loading=async"
+        async 
+        defer>
+    </script>
+  
+    <!-- ДИНАМИЧНО ЗАРЕЖДАНЕ НА SCRIPT.JS -->
+    <script>
+        var script = document.createElement('script');
+        // Взима версията от config.js или timestamp (за да работи локално)
+        var ver = (typeof APP_CONFIG !== 'undefined') ? APP_CONFIG.version : Date.now();
+        script.src = "script.js?v=" + ver;
+        script.defer = true;
+        document.body.appendChild(script);
+    </script>
+	
+    <script>
+      window.va = window.va || function () { (window.va.q = window.va.q || []).push(arguments); };
+    </script>
+    <script defer src="/_vercel/insights/script.js"></script>
+
+
+<script>
+    // Функция за отваряне/затваряне на групите в настройките
+    function toggleSettingsGroup(groupId, arrowId) {
+        const group = document.getElementById(groupId);
+        const arrow = document.getElementById(arrowId);
+        
+        if (group.classList.contains('open')) {
+            group.classList.remove('open');
+            if(arrow) arrow.classList.remove('arrow-rotated');
+        } else {
+            group.classList.add('open');
+            if(arrow) arrow.classList.add('arrow-rotated');
+        }
+    }
+</script>
+
+
+
+
+<!-- МОДАЛ: ДОБАВЯНЕ НА ЛЮБИМО МЯСТО -->
+<div id="modal-add-place" class="modal-overlay hidden" style="z-index: 15000; align-items: center; justify-content: center; display: flex;">
+    <div class="modal-content" style="width: 320px; padding: 24px; border-radius: 20px;">
+        <h3 style="margin-top: 0;" data-i18n="dialog_favorite_place_title">Запази място</h3>
+        <input type="text" id="input-place-label" class="nickname-input" data-i18n-placeholder="placeholder_place_name" placeholder="Име (напр. Вкъщи)" style="width:100%; margin-bottom:16px; border: 1px solid var(--outline); padding: 10px; border-radius: 8px; background: var(--background); color: var(--on-surface);">
+        
+        <div style="display: flex; justify-content: space-around; margin-bottom: 20px;">
+            <button class="icon-btn-square" onclick="setPlaceIcon('home')" id="icon-opt-home" style="width:50px; height:50px; border-radius:12px; border:1px solid var(--outline); background:var(--surface); cursor:pointer;"><span class="material-icons-round">home</span></button>
+            <button class="icon-btn-square" onclick="setPlaceIcon('work')" id="icon-opt-work" style="width:50px; height:50px; border-radius:12px; border:1px solid var(--outline); background:var(--surface); cursor:pointer;"><span class="material-icons-round">business_center</span></button>
+            <button class="icon-btn-square" onclick="setPlaceIcon('place')" id="icon-opt-place" style="width:50px; height:50px; border-radius:12px; border:1px solid var(--outline); background:var(--surface); cursor:pointer;"><span class="material-icons-round">place</span></button>
+        </div>
+        
+        <div style="display:flex; gap:10px;">
+            <button onclick="confirmSavePlace()" class="route-action-btn go" style="flex:1; justify-content:center; padding:12px; font-weight:bold;" data-i18n="btn_save">Запази</button>
+            <button class="btn-close-modal" onclick="closeAddPlaceModal()" style="flex:1; color: var(--on-surface-variant); background:none; border:none; cursor:pointer;" data-i18n="cancel">Отказ</button>
+        </div>
+    </div>
+</div>
+
+
+
+
+<!-- ЕКРАН: МАРШРУТНИ ПРОМЕНИ -->
+<div id="screen-route-changes" class="screen full-screen hidden">
+    <div class="screen-header sticky-header">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 10px;">
+            <button class="icon-btn" onclick="showScreen('screen-social')">
+                <span class="material-icons-round">arrow_back</span>
+            </button>
+            <div style="text-align: center; flex-grow: 1;">
+                <div style="font-weight: 800; font-size: 16px;" data-i18n="route_changes_title_main">Маршрутни промени</div>
+                <div style="font-size: 10px; color: gray; font-style: italic;" data-i18n="route_changes_source">ЦГМ</div>
+            </div>
+            <div style="width: 48px;"></div>
+        </div>
+    </div>
+    <div id="route-changes-list" class="screen-content centered-content" style="background: #f5f5f5; min-height: 100vh; padding-top: 10px;">
+        <!-- Списъкът ще се зареди тук -->
+    </div>
+</div>
+
+<!-- МОДАЛ: ДЕТАЙЛИ ЗА НОВИНА/ПРОМЯНА -->
+<div id="modal-news" class="modal-overlay hidden" style="z-index: 20000; align-items: center; justify-content: center; display: flex;">
+    <div class="modal-content" style="width: 95%; max-width: 500px; height: 85vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 24px;">
+        <div id="news-image-container" style="width: 100%; height: 250px; background: #000; position: relative; display: none;">
+            <img id="news-img" style="width: 100%; height: 100%; object-fit: contain;">
+            <button onclick="closeNewsModal()" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); border: none; border-radius: 50%; width: 36px; height: 36px; color: white; cursor: pointer;">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+        <div id="news-header-no-img" style="display: flex; justify-content: flex-end; padding: 10px;">
+            <button class="icon-btn-small" onclick="closeNewsModal()"><span class="material-icons-round">close</span></button>
+        </div>
+        <div style="flex: 1; overflow-y: auto; padding: 20px;">
+            <h2 id="news-title" style="margin: 0 0 16px 0; color: var(--primary); font-weight: 900; font-size: 20px; line-height: 1.2;"></h2>
+            <div id="news-text" style="font-size: 16px; line-height: 1.5; color: var(--on-surface); white-space: pre-wrap;"></div>
+            <div style="margin-top: 20px; font-size: 13px; color: gray;">
+                <span data-i18n="source_prefix">Източник: </span>
+                <a id="news-source-link" href="#" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline;" data-i18n="cgm_url">www.sofiatraffic.bg</a>
+            </div>
+        </div>
+        <div style="padding: 16px; border-top: 1px solid #eee;">
+            <button onclick="closeNewsModal()" class="route-action-btn go" style="width: 100%; justify-content: center; height: 50px;" data-i18n="close">Затвори</button>
+        </div>
+    </div>
+</div>
+
+
+
+
+</body>
+</html>

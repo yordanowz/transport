@@ -1,0 +1,6865 @@
+:root {
+    --primary: #1c75bc;
+    --surface: #ffffff;
+    --background: #f0f2f5;
+    --on-surface: #1c1b1f;
+    --on-surface-variant: #49454f;
+    --outline: #79747e;
+    --color-bus: #BE1E2D;
+    --color-tram: #F7941D;
+    --color-trolley: #27AAE1;
+    --color-metro: #007DC5;
+    --color-night: #2C2C2E;
+    --color-accent: #FFEB3B;
+    --safe-top: env(safe-area-inset-top, 20px);
+    --safe-bottom: env(safe-area-inset-bottom, 20px);
+	
+}
+
+/* --- FIX: Глобален ресет за ширината (оправя хоризонталния скрол) --- */
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* --- ТЪМНА ТЕМА --- */
+body.dark-theme {
+    --primary: #64b5f6; 
+    --surface: #1e1e1e;
+    --background: #121212;
+    --on-surface: #e0e0e0;
+    --on-surface-variant: #a0a0a0;
+    --outline: #444444;
+}
+
+body { 
+    margin: 0; padding: 0; 
+    font-family: 'Roboto', sans-serif; 
+    background-color: var(--background); 
+    color: var(--on-surface); 
+    overflow: hidden; /* Спира скрола на body */
+    width: 100vw;     /* Фиксира ширината */
+    transition: background-color 0.3s, color 0.3s; 
+}
+
+.centered-content { max-width: 600px; margin: 0 auto; width: 100%; }
+
+/* --- ОСНОВНИ ЕКРАНИ --- */
+.screen { 
+    position: absolute; top: 0; left: 0; right: 0; 
+    bottom: calc(60px + var(--safe-bottom)); 
+    background: var(--background); 
+    display: none; 
+    overflow-y: auto; 
+    overflow-x: hidden; /* ВАЖНО: Спира хоризонталния скрол вътре в екраните */
+    z-index: 10; 
+}
+.screen.active { display: block; }
+.screen.hidden { display: none !important; }
+.screen.full-screen { z-index: 6000; bottom: 0 !important; background: var(--background); }
+
+#screen-map { bottom: 0; z-index: 1; overflow: hidden; }
+.screen-header { background: var(--surface); padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 20; text-align: center; color: var(--on-surface); }
+.screen-header h2 { margin: 0; font-size: 20px; font-weight: 500; }
+.screen-content { padding: 16px; padding-bottom: 80px; width: 100%; }
+.sticky-header { position: sticky; top: 0; z-index: 10; background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+/* --- НАВИГАЦИЯ --- */
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: calc(60px + var(--safe-bottom)); background: var(--surface); display: flex; justify-content: space-around; padding-top: 8px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 5000; }
+.nav-item { background: none; border: none; display: flex; flex-direction: column; align-items: center; color: var(--on-surface-variant); cursor: pointer; width: 64px; }
+.nav-item .material-icons-round { font-size: 24px; margin-bottom: 4px; padding: 4px 20px; border-radius: 16px; transition: 0.2s; }
+.nav-label { font-size: 11px; font-weight: 500; }
+.nav-item.active { color: var(--on-surface); }
+.nav-item.active .material-icons-round { background: rgba(28, 117, 188, 0.15); color: var(--primary); }
+
+/* --- MAP UI --- */
+#map { height: 100%; width: 100%; }
+
+
+.search-bar-container.hidden { display: none !important; }
+.search-bar { background: var(--surface); border-radius: 28px; height: 52px; display: flex; align-items: center; padding: 0 16px; box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+.search-bar input { border: none; outline: none; flex-grow: 1; font-size: 16px; margin: 0 12px; background: transparent; color: var(--on-surface); }
+.static-search { border: 1px solid #e0e0e0; box-shadow: none; margin-bottom: 16px; }
+.fab { position: absolute; right: 16px; bottom: calc(90px + var(--safe-bottom)); width: 56px; height: 56px; border-radius: 16px; background: var(--surface); border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1000; color: var(--primary); transition: transform 0.1s; }
+.fab:active { transform: scale(0.95); }
+@media (min-width: 768px) { .fab { right: calc(50% - 240px - 70px); } }
+.zoom-hint { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; opacity: 0; transition: 0.3s; pointer-events: none; z-index: 900; }
+.zoom-hint.visible { opacity: 1; }
+
+/* --- MAP LINE CONTROLS --- */
+.map-line-controls { position: absolute; top: calc(20px + var(--safe-top)); right: 16px; left: 16px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; gap: 12px; }
+.map-line-controls.hidden { display: none !important; }
+.line-info-pill { background: var(--primary); color: white; padding: 8px 16px; border-radius: 24px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); font-weight: 700; font-size: 16px; pointer-events: auto; margin-bottom: 8px; align-self: center; }
+.map-ctrl-actions { display: flex; flex-direction: column; gap: 12px; pointer-events: auto; }
+.map-circle-btn { width: 56px; height: 56px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); cursor: pointer; transition: transform 0.1s; }
+.map-circle-btn:active { transform: scale(0.95); }
+.bg-surface { background: var(--surface); color: var(--on-surface-variant); }
+.bg-active { background: var(--primary); color: white; }
+
+/* --- ДОБАВИ ТОВА ПРИ ДРУГИТЕ BG-КЛАСОВЕ --- */
+.bg-night { background-color: var(--color-night); }
+.color-night { color: var(--color-night); }
+
+
+/* --- ROUTES CHIPS --- */
+/* --- 1. ПРЕМЕСТВАНЕ НА ЛЕНТАТА С МАРШРУТА ПО-НАГОРЕ --- */
+
+.routes-container::-webkit-scrollbar { display: none; }
+.routes-container.hidden { display: none; }
+.route-chip { background: var(--surface); border-radius: 20px; padding: 6px 12px; display: flex; align-items: center; box-shadow: 0 3px 6px rgba(0,0,0,0.2); cursor: pointer; transition: 0.1s; border: 2px solid transparent; }
+.route-chip:active { transform: scale(0.95); }
+.route-chip.focused { border-color: var(--primary); background-color: #e3f2fd; }
+.chip-icon { font-size: 18px; margin-right: 6px; color: var(--on-surface-variant); }
+.chip-text { font-weight: 600; font-size: 14px; color: var(--on-surface); margin-right: 8px; }
+.chip-close { font-size: 18px; color: #999; border-radius: 50%; padding: 2px; }
+.chip-close:hover { background-color: rgba(0,0,0,0.1); color: #333; }
+
+/* --- BOTTOM SHEET --- */
+.bottom-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto; width: 100%; max-width: 480px;
+    background: var(--surface); border-radius: 28px 28px 0 0; box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+    z-index: 6000; max-height: 85vh; display: flex; flex-direction: column;
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    touch-action: none; 
+    transform: translateY(0);
+}
+.bottom-sheet.hidden { transform: translateY(150%) !important; box-shadow: none !important; }
+.bottom-sheet.dragging { transition: none; }
+@media (min-width: 768px) { .bottom-sheet { bottom: 20px; border-radius: 28px; } .bottom-sheet.hidden { transform: translateY(150%) !important; } }
+
+.sheet-header-area { padding-bottom: 8px; cursor: grab; background: var(--surface); border-radius: 28px 28px 0 0; }
+.sheet-handle-bar { height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding-top: 8px; }
+.sheet-handle { width: 36px; height: 4px; background: #e0e0e0; border-radius: 2px; }
+.sheet-title-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 0 16px; margin-top: 4px; }
+#sheet-stop-name { margin: 0; font-size: 20px; font-weight: 500; color: var(--on-surface); line-height: 1.3; padding-right: 10px; flex-grow: 1; }
+.close-btn { background: var(--background); width: 32px; height: 32px; min-width: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--on-surface-variant); }
+
+/* --- Bottom Sheet Actions (Бутоните в долното меню) --- */
+.sheet-actions-row { 
+    display: flex; 
+    justify-content: flex-end; /* БЕШЕ flex-start -> СЕГА Е flex-end (В ДЯСНО) */
+    gap: 12px; /* Разстояние между бутоните */
+    padding: 8px 20px 16px 20px; /* Малко повече отстъп отстрани */
+    border-bottom: 1px solid var(--outline); 
+}
+
+.sheet-content { padding: 16px 16px calc(30px + var(--safe-bottom)) 16px; overflow-y: auto; scrollbar-width: none; min-height: 200px; }
+
+
+/* --- По-големи бутони --- */
+/* --- ГЛОБАЛЕН СТИЛ ЗА БУТОНИТЕ (Карта, Любими, Търсене) --- */
+.icon-btn { 
+    background: var(--background);
+    border: 1px solid transparent; 
+    padding: 0; 
+    
+    /* ТУК Е РАЗМЕРЪТ - НАМАЛЯВАМЕ ГО */
+    width: 42px;  /* Беше 52px -> Сега е 42px (компактно и удобно) */
+    height: 42px; /* Квадратни */
+    
+    border-radius: 12px; /* Малко по-малко заобляне, за да пасне на размера */
+    cursor: pointer; 
+    color: var(--on-surface-variant); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Лека сянка за дълбочина */
+}
+
+.icon-btn:hover { background: var(--background); }
+
+.icon-btn:active {
+    transform: scale(0.95);
+    background-color: #e0e0e0;
+}
+
+/* Намаляваме и размера на иконката вътре */
+.icon-btn .material-icons-round {
+    font-size: 22px; /* Беше 24px */
+}
+
+/* --- TIMETABLE STYLES --- */
+.timetable-tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--outline); position: sticky; top: 56px; z-index: 9; }
+.tt-tab { flex: 1; text-align: center; padding: 12px; font-weight: 500; cursor: pointer; color: var(--on-surface-variant); border-bottom: 2px solid transparent; }
+.tt-tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 700; }
+.tt-line-container { margin-bottom: 16px; background: var(--surface); border-radius: 8px; overflow: hidden; border: 1px solid var(--outline); }
+.tt-line-header { padding: 12px 16px; font-weight: bold; background: var(--background); color: var(--on-surface); border-bottom: 1px solid var(--outline); }
+.tt-hour-row { display: flex; border-bottom: 1px solid var(--outline); }
+.tt-hour-row:last-child { border-bottom: none; }
+.tt-hour { width: 50px; padding: 8px; font-weight: bold; text-align: center; border-right: 1px solid var(--outline); background: var(--background); color: var(--primary); display: flex; align-items: center; justify-content: center; }
+.tt-minutes { flex: 1; padding: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tt-min { font-size: 14px; color: var(--on-surface); }
+
+/* --- SETTINGS --- */
+.settings-select { background: var(--background); color: var(--on-surface); border: 1px solid var(--outline); padding: 8px; border-radius: 8px; outline: none; font-size: 14px; }
+
+/* --- CARDS --- */
+.arrival-card { background: var(--outline); border-radius: 12px; margin-bottom: 8px; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); overflow: hidden; cursor: pointer; display: flex; min-height: 72px; padding: 8px; }
+.route-box { background: white; width: 56px; height: 56px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-right: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.15); z-index: 2; flex-shrink: 0; align-self: stretch; }
+.route-icon { font-size: 20px; }
+.route-number { font-size: 24px; font-weight: 800; line-height: 1; }
+.arrival-content { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.time-row { display: flex; align-items: baseline; flex-wrap: wrap; margin-bottom: 4px; }
+.main-time { font-size: 20px; font-weight: 700; margin-right: 6px; white-space: nowrap; line-height: 1.1; }
+.is-realtime { color: #B9F6CA; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+.subsequent-times { font-size: 13px; color: rgba(255,255,255,0.9); font-weight: 400; }
+.accent-text { color: var(--color-accent); font-weight: 700; }
+.dest-group { display: flex; flex-direction: column; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 4px; }
+.dest-name { font-size: 11px; color: white; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-transform: uppercase; line-height: 1.3; }
+.line-fav-btn { background: none; border: none; color: rgba(255,255,255,0.4); width: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; align-self: stretch; }
+.line-fav-btn.active { color: #FFD700; opacity: 1; }
+.line-fav-divider { margin-bottom: 16px; border-bottom: 4px solid rgba(0,0,0,0.05); padding-bottom: 4px; }
+.bg-bus { background-color: var(--color-bus); } .bg-tram { background-color: var(--color-tram); } .bg-trolley { background-color: var(--color-trolley); } .bg-metro { background-color: var(--color-metro); }
+.color-bus { color: var(--color-bus); } .color-tram { color: var(--color-tram); } .color-trolley { color: var(--color-trolley); } .color-metro { color: var(--color-metro); }
+
+/* MARKERS & TOOLTIPS */
+.stop-circle-gray { 
+    background-color: #263238; 
+    border: 2px solid white; 
+    border-radius: 50%; 
+    width: 100%; 
+    height: 100%; 
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4); 
+    /* opacity: 0.7;  <--- ТОВА ГО МАХАМЕ, за да може JS да го прави 1.0 или 0.4 */
+    transform: scale(1.5); 
+}
+
+
+.stop-circle-blue { 
+    background-color: #2196F3; 
+    border: 2px solid white; 
+    border-radius: 50%; 
+    width: 100%; 
+    height: 100%; 
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5); /* По-силна сянка */
+    z-index: 100; 
+    
+    /* ПРОМЯНАТА: Увеличаваме мащаба от 1.3 на 1.8 */
+    transform: scale(1.8); 
+}
+
+
+.stop-tooltip-container { background: white; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); padding: 8px 12px; text-align: center; font-family: 'Roboto', sans-serif; min-width: 150px; border: 1px solid #eee; }
+.stop-tooltip-title { display: block; font-size: 14px; font-weight: 900; color: #000; margin-bottom: 2px; text-transform: uppercase; }
+.stop-tooltip-code { font-weight: 700; color: #333; }
+.stop-tooltip-hint { display: block; font-size: 11px; color: #666; font-weight: 400; margin-top: 2px; }
+.leaflet-popup-content-wrapper { border-radius: 4px; padding: 0; }
+.leaflet-popup-content { margin: 0; }
+.leaflet-popup-tip { background: white; }
+
+/* LIST ITEMS */
+
+
+
+/* Горната част: Икона + Име + Стрелка */
+.list-top-row {
+    display: flex;
+    align-items: center;
+    cursor: pointer; /* Цялата горна част отваря разписанието */
+}
+
+
+.list-item { padding: 16px; display: flex; align-items: center; cursor: pointer; }
+/* Иконата на транспорта */
+.list-icon-box {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--background);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    color: var(--primary);
+    flex-shrink: 0;
+}
+
+/* Текстът (Име и код) */
+.list-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.list-title { font-size: 16px; font-weight: 500; color: var(--on-surface); }
+.list-subtitle { font-size: 13px; color: var(--on-surface-variant); }
+.list-action-btn { background: none; border: none; color: var(--on-surface-variant); padding: 8px; cursor: pointer; border-radius: 50%; }
+.list-action-btn:hover { background-color: var(--background); }
+.list-action-btn.delete { color: #ff4444; }
+.list-expand-icon { color: var(--on-surface-variant); transition: 0.2s; margin-left: 4px; }
+.list-expand-icon.expanded { transform: rotate(180deg); }
+
+/* FAV DETAILS */
+
+.fav-details-container.visible { display: block; }
+.empty-message { text-align: center; padding: 30px 20px; color: var(--on-surface-variant); font-size: 14px; }
+.fav-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 8px 0; margin-bottom: 8px; border-bottom: 1px solid var(--outline); }
+.fav-tool-btn { background: var(--surface); border: 1px solid var(--outline); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--on-surface-variant); cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.fav-tool-btn:hover { background-color: var(--background); border-color: var(--on-surface-variant); }
+.fav-tool-btn.active { color: var(--primary); border-color: var(--primary); background-color: #e3f2fd; }
+.btn-text-stack { display: flex; flex-direction: column; align-items: center; line-height: 0.8; }
+
+
+/* Текстът на бутона Time Table */
+/* Текстът на бутона Time Table */
+.btn-text-stack span { 
+    font-size: 9px; /* Беше 10px -> Намаляваме на 9px */
+    font-weight: 700; 
+    line-height: 1; /* По-сбито */
+}
+/* MODAL */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 7000; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: 0.2s; }
+.modal-overlay.active { opacity: 1; pointer-events: auto; }
+.modal-content { background: var(--surface); width: 100%; max-width: 480px; border-radius: 28px 28px 0 0; padding: 24px; transform: translateY(100%); transition: 0.3s; }
+.modal-overlay.active .modal-content { transform: translateY(0); }
+.action-item { display: flex; align-items: center; padding: 16px; border-radius: 12px; background: var(--background); margin-bottom: 10px; cursor: pointer; font-weight: 500; color: var(--on-surface); }
+.action-item span { margin-right: 16px; color: var(--primary); }
+.btn-close-modal { width: 100%; padding: 14px; background: none; border: none; color: var(--primary); font-weight: 700; font-size: 16px; cursor: pointer; }
+.rotating { animation: spin 1s linear infinite; color: var(--primary); }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* VEHICLE MARKERS */
+.vehicle-marker-container { display: flex; flex-direction: column; align-items: center; position: relative; pointer-events: none; }
+.vehicle-time-bubble { background: white; padding: 2px 8px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); font-size: 11px; font-weight: 800; color: #333; white-space: nowrap; margin-bottom: 2px; border: 1px solid #ddd; }
+.vehicle-circle-number { width: 36px; height: 36px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; font-weight: 900; z-index: 200; }
+
+/* --- VEHICLE DIRECTION ARROW (NEW) --- */
+.vehicle-marker-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    position: relative;
+    transition: transform 0.5s linear; /* Smooth rotation */
+}
+
+/* Arrow pointing UP (default 0 deg). It will rotate with wrapper */
+.vehicle-direction-arrow {
+    width: 0; 
+    height: 0; 
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 8px solid; /* Color set inline */
+    position: absolute;
+    top: -6px; /* Protrude slightly */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 201; /* Above circle */
+}
+
+.vehicle-marker-container {
+    /* Reset default container styles for this mode */
+}
+
+/* RIDE ALONG SCREEN */
+
+
+/* =========================================================
+   RIDE ALONG SCREEN (EXACT COPY FROM STYLE-2.CSS)
+   ========================================================= */
+
+.ride-along-overlay-backdrop { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); z-index: 7999; display: none; }
+.ride-along-overlay-backdrop.active { display: block; }
+
+/* ЕКРАН RIDE ALONG - FIX ЗА СКРОЛВАНЕТО */
+#screen-ride-along.screen {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; height: 100dvh; background: #F5F7F9; z-index: 8000;
+    display: none; flex-direction: column; padding: 0 !important; max-width: 100%;
+}
+#screen-ride-along.screen.active { display: flex !important; overflow: hidden !important; }
+
+@media (min-width: 768px) {
+    #screen-ride-along.screen {
+        left: 50%; transform: translateX(-50%); max-width: 480px;
+        top: 20px; bottom: 20px; border-radius: 20px;
+        box-shadow: 0 0 50px rgba(0,0,0,0.5); height: auto; max-height: 90vh;
+    }
+}
+
+
+.ra-header { 
+    background: white; 
+    /* Добавяме безопасно разстояние за Notch-а отгоре */
+    padding: calc(16px + env(safe-area-inset-top)) 20px 16px 20px; 
+    text-align: center; 
+    flex-shrink: 0; 
+    border-bottom: 1px solid rgba(0,0,0,0.1); 
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    z-index: 20;
+}
+
+
+
+#ride-along-title { font-size: 22px; font-weight: 700; margin: 0; color: #1c75bc; line-height: 1.2; }
+#ride-along-subtitle { font-size: 14px; color: #555; text-transform: uppercase; margin-top: 4px; font-weight: 500; }
+
+.ra-content { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; padding: 0; scroll-behavior: smooth; }
+
+
+.ra-footer { 
+    position: absolute; 
+    /* Вдигаме бутона нагоре, ако телефонът има Home Bar */
+    bottom: calc(30px + env(safe-area-inset-bottom)); 
+    left: 0; 
+    right: 0; 
+    display: flex; 
+    justify-content: center; 
+    z-index: 30; 
+    pointer-events: none; 
+}
+
+
+.btn-exit { pointer-events: auto; background-color: #006064; color: white; border: none; border-radius: 50px; padding: 14px 60px; font-size: 16px; font-weight: bold; box-shadow: 0 6px 20px rgba(0,96,100, 0.4); cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+.btn-exit:active { transform: scale(0.96); }
+
+/* --- TIMELINE STYLES (EXACTLY AS IN STYLE-2.CSS) --- */
+
+/* Тук е разковничето: слагаме padding на контейнера, не на елементите */
+#ride-along-list { 
+    position: relative; 
+    padding: 10px 20px 10px 80px; /* 80px отляво осигурява място за линията */
+    padding-bottom: 120px; /* Място за бутона долу */
+}
+
+.timeline-line-bg { 
+    position: absolute; 
+    left: 40px; /* Линията е фиксирана спрямо контейнера */
+    top: 0; bottom: 0; width: 4px; 
+    background-color: #e0e0e0; z-index: 0; border-radius: 2px; 
+}
+
+.timeline-line-passed { 
+    position: absolute; 
+    left: 40px; 
+    top: 0; width: 4px; 
+    background: #00838F; z-index: 1; 
+    height: 0; transition: height 1s linear; border-radius: 2px; 
+}
+
+.timeline-stop-item { 
+    position: relative; 
+    min-height: 70px; 
+    display: flex; align-items: center; justify-content: space-between; 
+    margin-bottom: 10px; 
+    /* ВАЖНО: Тук няма padding-left, защото контейнерът го задава */
+}
+
+/* ТОЧКИТЕ - Използваме отрицателен лефт, за да влязат в празното пространство */
+.stop-dot { 
+    position: absolute; 
+    left: -47px; /* Центрира идеално върху линията */
+    width: 18px; height: 18px; /* По-големи точки */
+    border-radius: 50%; 
+    background-color: #fff; 
+    border: 3px solid #00838F; 
+    z-index: 2; 
+    box-shadow: 0 0 0 2px #F5F7F9; /* Малко по-фин ореол */
+}
+
+.timeline-stop-item.passed .stop-dot { border-color: #999; background-color: #ccc; }
+
+/* ПИННАТА СПИРКА - По-голяма точка */
+.timeline-stop-item.pinned .stop-dot { 
+    border-color: #FBC02D; 
+    background-color: #fff; 
+    width: 24px; height: 24px; /* Още по-голяма за избраната */
+    left: -50px; /* Центриране спрямо новия размер */
+}
+
+.stop-info-box { display: flex; flex-direction: column; flex-grow: 1; }
+.timeline-stop-name { font-size: 16px; color: #37474F; font-weight: 500; line-height: 1.2; }
+.timeline-stop-code { font-size: 12px; color: #90A4AE; }
+.timeline-stop-item.passed .timeline-stop-name { color: #999; }
+.stop-meta-info { font-size: 12px; margin-top: 2px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.meta-label { font-weight: bold; }
+.label-orange { color: #FBC02D; } 
+.list-eta-time { font-weight: normal; color: #333; background: #fff3e0; padding: 2px 6px; border-radius: 4px; margin-left: 4px; }
+
+.pin-container { display: flex; flex-direction: column; align-items: center; min-width: 60px; cursor: pointer; }
+.pin-icon { font-size: 24px; color: #90A4AE; transform: rotate(45deg); }
+.pin-text { font-size: 10px; color: #90A4AE; margin-top: 2px; }
+.timeline-stop-item.pinned .pin-icon { color: #FBC02D; font-variation-settings: 'FILL' 1; }
+.timeline-stop-item.pinned .pin-text { color: #FBC02D; font-weight: bold; }
+
+/* АВТОБУСЧЕТО (МАРКЕР) */
+.ra-vehicle-timeline-marker {
+    position: absolute; 
+    left: 42px; /* Центрирано точно върху линията */
+    top: 0; z-index: 10; /* Z-index 10 гарантира, че покрива линията (която е z-index 1) */
+    transition: top 1s linear; 
+    transform: translate(-50%, -50%); /* Това центрира маркера вертикално и хоризонтално спрямо координатите */
+}
+
+.ra-vehicle-core {
+    width: 40px; height: 40px; /* По-голям автобус */
+    background-color: #4CAF50; 
+    border: 3px solid white; /* По-дебела рамка за видимост */
+    border-radius: 50%; 
+    color: white; 
+    font-weight: bold; 
+    font-size: 14px; /* Малко по-голям шрифт */
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+/* БАЛОНЧЕ ЗА ВРЕМЕ */
+.ra-vehicle-eta-bubble {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: 100%; margin-bottom: 8px; 
+    background-color: #66BB6A; color: white; 
+    padding: 6px 10px; border-radius: 12px; 
+    font-size: 12px; font-weight: bold; text-align: center; line-height: 1.2; 
+    min-width: 60px; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 20;
+}
+.ra-vehicle-eta-bubble::after {
+    content: ''; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 5px solid #66BB6A; border-bottom: none;
+}
+
+
+/* --- LINES SCREEN UI --- */
+.transport-type-selector-container { background: var(--surface); padding: 12px 0; position: sticky; top: 60px; z-index: 15; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.transport-types-row { display: flex; justify-content: space-around; align-items: flex-start; max-width: 600px; margin: 0 auto; padding: 0 8px; }
+.type-icon-wrapper { display: flex; flex-direction: column; align-items: center; cursor: pointer; width: 64px; transition: transform 0.2s cubic-bezier(0.4, 0.0, 0.2, 1); }
+/* Корекция за кръгчето в таба Линии */
+.type-icon-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Махаме background-color, защото картинката го има */
+    background-color: transparent !important; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    overflow: hidden; /* За да не излиза картинката от кръга */
+}
+
+/* Стил за самата картинка вътре */
+.type-select-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Анимацията при избор (маркиране) */
+.type-icon-wrapper.active .type-icon-circle {
+    transform: scale(1.15); /* Правим го малко по-голямо */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    /* Добавяме кант в цвета на линията, за да се вижда кое е избрано */
+    border: 3px solid var(--primary); 
+}
+
+/* Махаме филтъра за тъмна тема за тези икони, за да останат в оригиналните си цветове */
+body.dark-theme .type-select-img {
+    filter: none !important;
+}
+
+.type-icon-wrapper .material-icons-round { font-size: 28px; color: white; }
+.type-label { font-size: 12px; font-weight: 700; color: var(--primary); margin-top: 4px; opacity: 0; transform: translateY(-5px); transition: all 0.2s; text-align: center; }
+.type-icon-wrapper.active .type-label { opacity: 1; transform: translateY(0); }
+.lines-grid-container { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px; justify-content: flex-start; }
+.line-btn { min-width: 50px; height: 48px; border-radius: 8px; color: white; font-weight: 700; font-size: 16px; border: none; display: flex; align-items: center; justify-content: center; padding: 0 12px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.1s; flex-grow: 1; max-width: 100px; }
+.line-btn:active { transform: scale(0.95); }
+.variation-card { background: var(--surface); border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.15); margin: 0 16px 12px 16px; overflow: hidden; transition: all 0.3s ease; }
+.variation-header { padding: 16px; display: flex; align-items: center; cursor: pointer; background: var(--surface); }
+.variation-title { font-size: 16px; font-weight: 700; color: var(--on-surface); flex-grow: 1; line-height: 1.3; }
+.variation-expand-icon { color: var(--on-surface-variant); transition: transform 0.3s; }
+.variation-card.expanded .variation-expand-icon { transform: rotate(180deg); }
+.variation-content { display: none; border-top: 1px solid var(--outline); background: var(--background); padding: 8px 0; }
+.variation-card.expanded .variation-content { display: block; animation: slideDown 0.3s ease-out; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+
+
+/* --- 2. ЦЕНТРИРАНЕ НА ТОЧКИТЕ В ДЕТАЙЛИ ЗА ЛИНИЯ (STATIC) --- */
+
+
+
+.static-timeline-line { 
+    position: absolute; 
+    left: 29px; /* Линия на 29px */
+    width: 2px; /* Ширина 2px -> Центърът е на 30px */
+    top: 0; 
+    bottom: 0; 
+    background-color: var(--primary); 
+}
+
+.static-timeline-dot { 
+    position: absolute; 
+    /* ИЗЧИСЛЕНИЕ: Център (30px) - Половината на точката (5px) = 25px */
+    left: 25px; 
+    top: 50%; 
+    transform: translateY(-50%); 
+    width: 10px; 
+    height: 10px; 
+    border-radius: 50%; 
+    background: white; 
+    border: 2px solid var(--primary); 
+    z-index: 2; 
+}
+
+.static-timeline-item:first-child .static-timeline-line { top: 50%; }
+.static-timeline-item:last-child .static-timeline-line { bottom: 50%; }
+
+
+
+.static-stop-code { font-size: 12px; color: var(--on-surface-variant); }
+.action-list { padding: 8px 0; }
+
+/* --- ТЪМНА КАРТА (DARK MODE MAP) --- */
+/* Това обръща цветовете на картата, когато body има клас dark-theme */
+body.dark-theme .leaflet-layer,
+body.dark-theme .leaflet-control-attribution {
+    filter: invert(100%) hue-rotate(180deg) brightness(80%) contrast(90%);
+}
+
+/* --- СТРЕЛКА НА ПРЕВОЗНОТО СРЕДСТВО --- */
+.vehicle-direction-arrow {
+    width: 0; 
+    height: 0; 
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    /* ВАЖНО: Правим я винаги ярко зелена */
+    border-bottom: 9px solid #00E676 !important; 
+    position: absolute;
+    top: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 201;
+    filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.5)); /* Сянка за по-добър контраст */
+}
+
+/* --- LIVE USER WIDGET STYLES (ДОБАВИ НАЙ-ДОЛУ) --- */
+.live-counter-widget {
+    position: fixed;
+    /* ВДИГАМЕ ГО НАГОРЕ, за да е над новия бутон */
+    /* Беше 70px, правим го 160px (колкото е бутона за Радара от другата страна) */
+    bottom: calc(160px + env(safe-area-inset-bottom, 20px));
+    
+    left: 16px;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 5500;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.live-counter-widget.hidden {
+    opacity: 0;
+}
+
+.live-text {
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    font-family: sans-serif;
+}
+
+.live-indicator {
+    position: relative;
+    width: 8px;
+    height: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.live-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #4CAF50; /* Зелен цвят */
+    border-radius: 50%;
+    z-index: 2;
+}
+
+.live-dot-pulse {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background-color: #4CAF50;
+    border-radius: 50%;
+    animation: pulse-green 2s infinite;
+    z-index: 1;
+}
+
+@keyframes pulse-green {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(3); opacity: 0; }
+}
+
+/* --- FIX: Оправяне на Google Autocomplete --- */
+
+
+
+/* За всеки случай, ако има икони вътре */
+.pac-target-input {
+    background-image: none !important;
+}
+
+/* Вариант Б: Ако горното не помогне, направо махаме background-а на Google */
+/* (разкоментирай долния ред, ако Вариант А не работи) */
+/* #map-search-input { background-image: none !important; } */
+
+/* Стилове за редовете в падащото меню */
+.pac-item {
+    padding: 10px;
+    font-size: 14px;
+    cursor: pointer;
+}
+.pac-item:hover {
+    background-color: #f0f2f5;
+}
+
+/* --- СПЕЦИАЛЕН ЦВЯТ ЗА ТРАМВАИ (ВТОРА ДЕСТИНАЦИЯ) --- */
+/* По подразбиране е жълто, но за трамваите (оранжев фон) го правим Цян */
+.bg-tram .accent-text {
+    color: #8B0000 !important; /* Ярко светло синьо/цян */
+}
+
+/* --- НОВ СТИЛ ЗА СПИСЪЦИ (ЛЮБИМИ И ТЪРСЕНЕ) --- */
+
+/* Контейнер на целия блок (Картата) */
+.list-item-container {
+    background: var(--surface);
+    border-bottom: 1px solid var(--outline);
+    padding: 16px;
+    display: flex;
+    flex-direction: column; /* Вертикална подредба */
+    gap: 12px;
+    transition: background-color 0.2s;
+}
+
+/* Горната част: Икона + Текст + Стрелка */
+.list-header-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    cursor: pointer;
+}
+
+/* Иконата на транспорта (кръгчето) */
+.list-icon-box {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--background);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    color: var(--primary);
+    flex-shrink: 0;
+}
+
+/* Текстова част */
+.list-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden; /* За дълги имена */
+}
+
+.list-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--on-surface);
+    margin-bottom: 2px;
+    line-height: 1.2;
+}
+
+.list-subtitle {
+    font-size: 13px;
+    color: var(--on-surface-variant);
+}
+
+/* Стрелката за разпъване */
+.list-expand-icon {
+    color: var(--on-surface-variant);
+    transition: transform 0.3s;
+    font-size: 28px; /* По-голяма */
+}
+.list-expand-icon.expanded {
+    transform: rotate(180deg);
+}
+
+
+/* ИЗПОЛЗВАМЕ ГЛОБАЛНИЯ .icon-btn, НО С МАЛКА КОРЕКЦИЯ ЗА ТУК */
+.list-actions-bar .icon-btn {
+    background: var(--background);
+    border: 1px solid transparent; 
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* Активен бутон (напр. за времето) */
+.list-actions-bar .icon-btn.active {
+    background: #e3f2fd;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+}
+
+/* Бутон за триене - червен оттенък при hover/active */
+.btn-delete { color: #d32f2f !important; }
+.btn-delete:active { background: #ffebee !important; }
+
+/* Контейнерът за пристигащите автобуси (Details) */
+.list-arrivals-content {
+    display: none; /* Скрито по подразбиране */
+    margin-top: 8px;
+    border-top: 1px solid var(--outline);
+    padding-top: 12px;
+    animation: fadeIn 0.3s ease;
+}
+.list-arrivals-content.visible {
+    display: block;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+
+
+/* --- НОВИ СТИЛОВЕ ЗА СПИСЪКА СЪС СПИРКИ В ЛИНИИ --- */
+
+/* Контейнер за всеки ред */
+.line-detail-row-wrapper {
+    background: var(--surface);
+    border-bottom: 1px solid var(--outline);
+    /* Без margin, за да са залепени като списък */
+}
+
+
+
+/* Линията и точката (остават фиксирани позиционирани) */
+.static-timeline-line { 
+    position: absolute; 
+    left: 29px; 
+    width: 2px; 
+    top: 0; bottom: 0; 
+    background-color: var(--primary); 
+    pointer-events: none;
+}
+.static-timeline-dot { 
+    position: absolute; 
+    left: 25px; 
+    top: 50%; transform: translateY(-50%); 
+    width: 10px; height: 10px; 
+    border-radius: 50%; 
+    background: white; 
+    border: 2px solid var(--primary); 
+    z-index: 2; 
+    pointer-events: none;
+}
+
+
+
+
+.inline-map-btn:active {
+    background-color: rgba(0,0,0,0.05);
+}
+
+
+.static-expand-icon.expanded {
+    transform: rotate(180deg);
+}
+
+/* МАГИЯТА: Когато е разпънато, скриваме горния бутон за карта, 
+   за да изглежда, че се е преместил долу */
+.static-expand-icon.expanded ~ .inline-map-btn {
+    display: none;
+}
+
+/* Екшън барът, който се появява отдолу */
+.line-detail-actions {
+    display: none; /* Скрит по подразбиране */
+    padding: 0 16px 8px 16px;
+    justify-content: flex-end;
+    gap: 12px;
+}
+.line-detail-actions.visible {
+    display: flex;
+    animation: fadeIn 0.2s;
+}
+/* --- ПОПРАВКА НА ПОДРЕДБАТА В ЛИНИИ --- */
+
+
+
+
+
+
+/* Когато е разпънато, скриваме бутона за карта (за да слезе долу) */
+.expanded .inline-map-btn {
+    display: none;
+}
+
+/* --- ФИКС ЗА ЛИНИИ И БУТОН КАРТА --- */
+
+
+
+/* 3. Стрелката за разпъване */
+.static-expand-icon {
+    font-size: 24px;
+    color: var(--on-surface-variant);
+    flex-shrink: 0;
+    margin-right: 4px;
+}
+
+
+/* Скриване на бутона при отворен ред */
+.static-timeline-item.row-open .inline-map-btn {
+    display: none !important;
+}
+
+
+/* --- ЯДРЕН ФИКС ЗА ПОЗИЦИЯТА --- */
+
+/* 1. РОДИТЕЛЯТ: Махаме всякакъв отстъп отляво! */
+.static-timeline-item { 
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important; 
+    
+    /* ВАЖНО: Нулираме padding-left, защото той буташе текста! */
+    padding: 8px 0 8px 0 !important; 
+    
+    width: 100%;
+    position: relative;
+    box-sizing: border-box;
+}
+
+/* 2. ТЕКСТЪТ: Слагаме го точно на 45px от ръба */
+.static-stop-info {
+    /* Това е единственото число, което определя позицията */
+    margin-left: 45px !important; 
+    
+    flex-grow: 1; 
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: left !important; 
+    align-items: flex-start !important;
+    min-width: 0;
+}
+
+/* 3. БУТОНЪТ КАРТА (за всеки случай да не пречи) */
+.inline-map-btn {
+    display: flex !important;
+    width: 44px; 
+    height: 44px;
+    background: transparent;
+    color: var(--primary);
+    border: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0; 
+    z-index: 5;
+    margin-right: 4px; /* Малко отстъп от десния ръб */
+    cursor: pointer;
+}
+
+
+/* =============================================== */
+/*      СИГНАЛ ЗА РЕАЛНО ВРЕМЕ (GPS ICONS)        */
+/* =============================================== */
+
+/* 1. Текстът на времето - ВИНАГИ БЯЛ И СТАТИЧЕН */
+.main-time {
+    color: white !important;
+    font-size: 22px !important;
+    font-weight: 800;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5); /* Лека сянка за четливост */
+    animation: none !important; /* Махаме мигането от текста */
+    margin-left: 2px; /* Малко отстъп от иконата */
+}
+
+/* Ако искаш да махнеш зелената сянка от преди, ползвай това: */
+.main-time.is-realtime {
+    color: white !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
+    animation: none !important;
+}
+
+/* 2. Анимация за пулсиране на ИКОНАТА */
+@keyframes signal-pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.9); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* 3. Стил за самата икона (Сензор) */
+.signal-icon {
+    font-size: 20px !important; /* Размер на иконата */
+    vertical-align: middle;      /* Центриране спрямо текста */
+    margin-right: 4px;
+    margin-bottom: 2px;
+}
+
+/* 4. СЪСТОЯНИЕ: НА ЖИВО (Зелено и мигащо) */
+.signal-icon.live {
+    color: #00E676 !important; /* Ярко зелено */
+    animation: signal-pulse 2s infinite ease-in-out;
+    text-shadow: 0 0 5px rgba(0, 230, 118, 0.4); /* Леко сияние */
+}
+
+/* 5. СЪСТОЯНИЕ: ПО РАЗПИСАНИЕ (Сиво/Задраскано) */
+.signal-icon.schedule {
+    color: rgba(255, 255, 255, 0.5) !important; /* Полупрозрачно бяло/сиво */
+    animation: none;
+}
+
+
+
+/* --- ЗВЕЗДИЧКА ВЪРХУ МАРКЕРИТЕ --- */
+
+/* Контейнер за иконата на картата */
+.map-marker-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Самата картинка (автобусчето) */
+.map-marker-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* Сянка за по-добра видимост на картата */
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+}
+
+/* Звездичката като значка (БЕЗ КАНТ) */
+.marker-fav-star {
+    position: absolute;
+    top: -8px;   
+    right: -8px; 
+    
+    color: #FFD700; 
+    font-size: 14px; 
+    
+    /* ПРОМЯНАТА: Приятно средно-тъмно сиво */
+    background-color: #666666; 
+    
+    border: none; 
+    
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* Сянка за дълбочина */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+    z-index: 20;
+}
+
+/* При селектирана (голяма) спирка */
+.map-marker-wrapper.selected .marker-fav-star {
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+    top: -6px;
+    right: -6px;
+}
+
+/* --- ТЪМНА ТЕМА: Бяло кръгче без кант --- */
+body.dark-theme .marker-fav-star {
+    background-color: white;
+    color: #FBC02D; 
+    border: none; /* Гарантираме, че няма кант и тук */
+}
+
+/* --- ЛОКАЦИЯ НА ПОТРЕБИТЕЛЯ (СВЕТЕЩО КРЪГЧЕ) --- */
+
+/* Контейнерът (задава се от Leaflet) */
+.user-location-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Централната синя точка */
+.user-loc-dot {
+    width: 14px;
+    height: 14px;
+    background-color: #4285F4; /* Google Blue */
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    z-index: 2;
+}
+
+/* Пулсиращият ореол */
+.user-loc-pulse {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background-color: rgba(66, 133, 244, 0.4); /* Полупрозрачно синьо */
+    border-radius: 50%;
+    z-index: 1;
+    animation: user-pulse 2s infinite;
+}
+
+@keyframes user-pulse {
+    0% {
+        transform: scale(0.5);
+        opacity: 0.8;
+    }
+    70% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+}
+
+
+/* --- БУТОН REVOLUT (АДАПТИВЕН: Черен/Бял) --- */
+
+.revolut-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    
+    background-color: black; 
+    border: none;
+    border-radius: 8px;
+    
+    /* ПРОМЯНА 1: Намаляваме височината (Беше 40px) */
+    /* Тъй като картинката е 20px, това оставя по 6px отгоре и отдолу */
+    height: 32px; 
+    
+    /* ПРОМЯНА 2: Намаляваме страничните отстояния (Беше 20px) */
+    padding: 0 12px; 
+    
+    margin-top: 8px;
+    
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color 0.3s, opacity 0.2s;
+}
+
+.revolut-btn:active {
+    opacity: 0.7;
+}
+
+/* СТАНДАРТНО: Логото се прави БЯЛО (обръщаме цветовете) */
+.revolut-btn img {
+    height: 20px;
+    width: auto;
+    display: block;
+    filter: invert(1); 
+}
+
+/* --- ТЪМНА ТЕМА (OVERRIDE) --- */
+body.dark-theme .revolut-btn {
+    /* В тъмното бутонът става БЯЛ */
+    background-color: white; 
+}
+
+body.dark-theme .revolut-btn img {
+    /* В тъмното логото става ЧЕРНО (махаме филтъра) */
+    filter: none; 
+    /* Ако картинката ти не е чисто черна, можеш да ползваш: filter: brightness(0); */
+}
+
+
+/* --- LIVE RADAR (ГЛОБАЛЕН ИЗГЛЕД) --- */
+
+/* Активен състояние на бутона */
+#btn-live-radar.active {
+    background-color: var(--primary);
+    color: white;
+}
+
+/* --- LIVE RADAR (АВТОБУСЧЕТА) --- */
+
+/* --- LIVE RADAR (НОВ СТИЛ С ЧОВКА И ПЛАВНО ДВИЖЕНИЕ) --- */
+
+
+
+/* --- LIVE RADAR (КОРИГИРАН) --- */
+
+/* 1. Клас за плавно движение */
+.radar-smooth-icon {
+    transition: transform 2s linear; 
+    z-index: 3000 !important; /* Да са под големите маркери на спирките */
+}
+
+/* 2. Обвивката (Върти се цялата) */
+.radar-vehicle-wrapper {
+    width: 26px; /* Малко по-тясно, за да е центрирано около кръгчето */
+    height: 26px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.5s linear; /* Плавно въртене */
+}
+
+/* 3. Човката (Стрелката) */
+.radar-vehicle-arrow {
+    width: 0; 
+    height: 0; 
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 8px solid; 
+    
+    position: absolute;
+    top: -6px; 
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1; 
+    filter: drop-shadow(0 -1px 1px rgba(0,0,0,0.2));
+    
+    /* НОВО: Плавно появяване/изчезване */
+    transition: opacity 0.5s ease-in;
+    opacity: 1; /* По подразбиране се вижда */
+}
+
+/* НОВО: Клас за скриване (когато нямаме посока) */
+.radar-vehicle-arrow.hidden-arrow {
+    opacity: 0;
+}
+
+/* 4. Кръгчето с номера (Върти се наобратно) */
+.radar-vehicle-circle {
+    width: 26px;  /* Леко увеличено (беше 24) */
+    height: 26px;
+    border-radius: 50%;
+    background-color: white;
+    border: 3px solid; /* По-дебела рамка за цвят */
+    
+    color: #222;
+    font-size: 10px; /* Намален шрифт (беше 11) */
+    font-weight: 800;
+    letter-spacing: -0.5px; /* Сбиваме цифрите, за да се съберат 3 */
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    z-index: 2; /* Над стрелката */
+    
+    transition: transform 0.5s linear; 
+}
+
+/* --- ГОЛЯМ РАДАР (ОЩЕ ПО-ГОЛЯМ ЗА АКТИВЕН МАРШРУТ) --- */
+
+/* 1. Уголемена обвивка */
+.radar-vehicle-wrapper.large {
+    width: 40px;  /* Беше 44px */
+    height: 40px;
+}
+
+/* 2. Уголемено кръгче */
+.radar-vehicle-circle.large {
+    width: 34px;  /* Беше 38px */
+    height: 34px;
+    font-size: 13px; /* По-голям шрифт (беше 14) */
+    font-weight: 900;
+    border-width: 4px; /* Още по-дебела рамка за видимост */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+
+/* 3. Уголемена стрелка (Намалена) */
+.radar-vehicle-arrow.large {
+    top: -8px; 
+    border-left-width: 8px;
+    border-right-width: 8px;
+    border-bottom-width: 12px;
+}
+
+/* 4. Балончето с времето */
+/* Балончето с времето върху автобуса */
+/* Балончето с времето върху автобуса */
+.vehicle-marker-container .vehicle-time-bubble {
+    position: absolute;
+    /* Вдигаме го на 48px от дъното, за да е над стрелката/кръгчето */
+    bottom: 48px; 
+    left: 50%;
+    transform: translateX(-50%);
+    
+    z-index: 300; 
+    
+    background: white; 
+    padding: 2px 8px; 
+    border-radius: 10px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+    
+    font-size: 11px; 
+    font-weight: 800; 
+    color: #333; 
+    white-space: nowrap; 
+    border: 1px solid #ddd;
+    
+    /* Скриваме го по подразбиране, ще го показваме с JS ако има текст */
+    display: none; 
+}
+
+/* Стрелкичка под балончето (по желание, за красота) */
+.vehicle-marker-container .vehicle-time-bubble::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -4px;
+    border-width: 4px;
+    border-style: solid;
+    border-color: white transparent transparent transparent;
+}
+
+/* --- ЯДРЕНА ОПЦИЯ ЗА Z-INDEX --- */
+/* Това гарантира, че слоят с активния автобус е над ВСИЧКО (линии, спирки, карти) */
+.leaflet-active-vehicle-pane {
+    z-index: 9000 !important; 
+}
+
+/* Гарантираме, че и самите икони вътре са с висок приоритет */
+.leaflet-active-vehicle-pane .leaflet-marker-icon {
+    z-index: 9000 !important;
+}
+
+
+
+/* --- СПИСЪЦИ (FIXED DRAG LAYOUT) --- */
+
+.list-item-container {
+    background: var(--surface);
+    border-bottom: 1px solid var(--outline);
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: background-color 0.2s, transform 0.1s;
+    position: relative;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    /* ВАЖНО: Трябва за да работи z-index при влачене */
+    transform: translateZ(0); 
+}
+
+/* Когато се влачи */
+.list-item-container.dragging {
+    opacity: 0.9;
+    background: #e3f2fd; /* Лек син фон за индикация */
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    z-index: 9999;
+    border: 2px solid var(--primary);
+}
+
+/* ГЛАВЕН ХЕДЪР РЕД (Контейнер) */
+.list-header-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+}
+
+/* ЛЯВО: Дръжка за влачене (ИЗОЛИРАНА) */
+.drag-handle {
+    cursor: grab;
+    color: var(--on-surface-variant);
+    font-size: 26px; /* По-голяма икона */
+    padding: 10px 8px 10px 0; /* Голяма зона за хващане */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none; /* Спира скрола на мобилни */
+    user-select: none;
+    -webkit-user-select: none;
+    flex-shrink: 0;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+    color: var(--primary);
+}
+
+/* ДЯСНО: Зона за кликване (Име + Икона + Стрелка) */
+.header-click-area {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    cursor: pointer;
+    gap: 10px;
+    min-width: 0; /* За text-overflow */
+}
+
+.list-title-text {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--on-surface);
+    flex-grow: 1;
+    line-height: 1.3;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.list-code-span {
+    color: var(--on-surface-variant);
+    font-weight: 400;
+    font-size: 14px;
+}
+
+.list-transport-icon {
+    font-size: 24px;
+    color: var(--primary);
+    flex-shrink: 0;
+}
+
+.list-expand-icon {
+    color: var(--on-surface-variant);
+    transition: transform 0.3s;
+    font-size: 24px;
+}
+.list-expand-icon.expanded {
+    transform: rotate(180deg);
+}
+
+/* ЛЕНТА С ДЕЙСТВИЯ */
+.list-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    width: 100%;
+    padding-top: 4px;
+}
+
+.list-buttons-right {
+    display: contents;
+}
+
+
+/* --- ТЪРСАЧКА В КАРТАТА (Floating Style) --- */
+
+.search-bar {
+    background: var(--surface);
+    border-radius: 24px; /* Силно заоблено като в Android */
+    height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3); /* Сянка за дълбочина */
+    pointer-events: auto; /* Самата лента е активна */
+    transition: all 0.3s ease;
+}
+
+/* В Android, когато се пише, става бяло/активно */
+.search-bar:focus-within {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    background: white;
+}
+
+.search-bar input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 16px;
+    flex-grow: 1;
+    margin-left: 10px;
+    color: #000; /* Винаги черно за четимост */
+}
+
+
+
+
+/* style.css */
+
+/* --- БУТОН ЗА ИЗЧИСТВАНЕ (X) --- */
+.search-clear-btn {
+    background: none;
+    border: none;
+    color: var(--on-surface-variant);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    margin-right: -8px; /* Да се залепи вдясно */
+    outline: none;
+}
+.search-clear-btn.hidden {
+    display: none !important;
+}
+.search-clear-btn:active {
+    opacity: 0.7;
+}
+
+/* --- БУТОН НАМЕРИ МАРШРУТИ (Floating Extended) --- */
+.fab-extended {
+    position: absolute;
+    /* Позиционираме го над бутона за Радара (който е на 160px) */
+    bottom: calc(230px + var(--safe-bottom)); 
+    right: 16px; 
+    
+    height: 48px;
+    padding: 0 20px;
+    border-radius: 24px;
+    
+    background-color: var(--primary);
+    color: white;
+    
+    border: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    
+    display: flex; 
+    align-items: center; 
+    gap: 8px;
+    
+    font-weight: 700; 
+    font-size: 14px;
+    z-index: 1000;
+    cursor: pointer;
+    
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+.fab-extended:active {
+    transform: scale(0.96);
+}
+
+.fab-extended.hidden {
+    display: none !important;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+/* --- ТЪМНА ТЕМА FIX ЗА X-БУТОНА --- */
+body.dark-theme .search-clear-btn {
+    color: #ffffff;
+}
+
+
+
+/* --- FIX ЗА GOOGLE AUTOCOMPLETE (Сложи най-долу) --- */
+.pac-container {
+    /* ВАЖНО: Трябва да е по-голямо от z-index на .route-panel-container (който е 2005) */
+    z-index: 20000 !important; 
+    
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    border-top: none;
+    margin-top: 2px; 
+    font-family: 'Roboto', sans-serif;
+    background-color: white; 
+}
+
+.pac-item {
+    padding: 12px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* Махаме досадните икони, които Google слага вътре в полето */
+.pac-target-input {
+    background-image: none !important;
+}
+
+/* --- FIX: Цветове на търсачката в ТЪМНА ТЕМА --- */
+
+/* 1. Правим текста бял, когато е включена тъмна тема */
+body.dark-theme .search-bar input {
+    color: #ffffff !important; 
+}
+
+/* 2. Правим иконката (лупата) бяла */
+body.dark-theme .search-bar .search-icon {
+    color: #ffffff !important;
+}
+
+/* 3. Правим подсказващия текст (placeholder) светло сив */
+body.dark-theme .search-bar input::placeholder {
+    color: #b0b0b0 !important;
+}
+
+/* 4. (Опционално) Ако искаш и падащото меню на Google да е тъмно */
+/* При тъмна тема */
+body.dark-theme .pac-container {
+    background-color: #1e1e1e;
+    border: 1px solid #444;
+    color: white;
+}
+
+body.dark-theme .pac-item {
+    border-top-color: #333;
+}
+body.dark-theme .pac-item:hover {
+    background-color: #333;
+}
+body.dark-theme .pac-item-query {
+    color: white;
+}
+
+body.dark-theme .pac-item span {
+    color: #b0b0b0;
+}
+
+/* --- FIX: Фон на търсачката при писане (ТЪМНА ТЕМА) --- */
+
+/* Когато кликнеш да пишеш в тъмна тема: */
+body.dark-theme .search-bar:focus-within {
+    /* Връщаме тъмния цвят (вместо бял) */
+    background-color: #1e1e1e !important; 
+    
+    /* Добавяме лек контур, за да се вижда, че е активно */
+    border: 1px solid #555;
+    
+    /* Гарантираме, че текстът остава бял */
+    color: #ffffff !important;
+}
+
+/* Гаранция, че самият input не си сменя фона */
+body.dark-theme .search-bar:focus-within input {
+    background-color: transparent !important;
+    color: #ffffff !important;
+}
+
+/* --- НОВО: СТИЛОВЕ ЗА БУТОНИТЕ --- */
+
+/* --- НОВО: СТИЛОВЕ ЗА БУТОНИТЕ (ТОВА ЛИПСВАШЕ) --- */
+
+/* 1. Бутонът Х в търсачката */
+.search-clear-btn {
+    background: none;
+    border: none;
+    color: var(--on-surface-variant);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px;
+    margin-right: -8px; /* Залепва го вдясно */
+    outline: none;
+    /* Важно: за да се натиска */
+    pointer-events: auto;
+    width: 40px; 
+    height: 100%;
+	 z-index: 9999; 
+    position: relative; /* Добави това за всеки случай */
+}
+
+.search-clear-btn.hidden {
+    display: none !important;
+}
+
+.search-clear-btn:active {
+    opacity: 0.7;
+}
+
+.fab-extended {
+    position: absolute;
+    
+    /* Подравняваме го точно с бутона за локация */
+    bottom: calc(90px + var(--safe-bottom)); 
+    left: 16px; 
+    
+    height: 56px; /* Височина колкото бутона за локация */
+    padding: 0 20px; /* Вътрешни отстояния за текста */
+    border-radius: 16px; /* Същото заобляне като бутона за локация */
+    
+    /* ЦВЕТОВЕ СПОРЕД ТЕМАТА */
+    background-color: var(--surface);
+    color: var(--primary);
+    
+    border: none;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    
+    display: inline-flex; /* ВАЖНО: Това спира разпъването! */
+    align-items: center; 
+    justify-content: center;
+    gap: 8px;
+    
+    font-weight: 500; 
+    font-size: 14px;
+    z-index: 1000;
+    cursor: pointer;
+    
+    /* Да не става огромен */
+    width: auto;
+    max-width: 200px;
+    
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+.fab-extended:active {
+    transform: scale(0.95);
+    background-color: var(--background);
+}
+
+.fab-extended.hidden {
+    display: none !important;
+    opacity: 0;
+}
+
+
+/* --- COMPACT ROUTE PLANNER PANEL --- */
+.route-panel-container {
+    position: absolute;
+    top: calc(10px + var(--safe-top)); 
+    left: 10px; 
+    right: 10px;
+    background: var(--surface);
+    /* Намален padding от 16px на 10px */
+    padding: 10px 12px; 
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    z-index: 2005;
+    display: flex;
+    flex-direction: column;
+    /* Намалено разстояние между елементите */
+    gap: 4px; 
+}
+
+.route-row {
+    display: flex;
+    align-items: center;
+    background: var(--background);
+    border-radius: 8px; /* По-малко заобляне за компактност */
+    padding: 0 10px;
+    /* Фиксирана по-малка височина */
+    height: 38px; 
+    border: 1px solid var(--outline);
+}
+
+.route-input {
+    flex-grow: 1;
+    border: none;
+    background: transparent;
+    padding: 4px 8px;
+    /* Малко по-малък шрифт */
+    font-size: 14px; 
+    color: var(--on-surface);
+    outline: none;
+}
+
+/* Иконите в редовете */
+.route-icon-dot, .route-icon-pin { 
+    font-size: 16px !important; 
+    margin-right: 2px; 
+}
+
+/* Трите точки (конектора) между От и До */
+.route-dots-connector {
+    position: absolute;
+    left: 21px; /* Наместено спрямо новия padding */
+    top: 40px; 
+    height: 18px; 
+    border-left: 2px dotted var(--outline);
+    z-index: 1;
+    opacity: 0.5;
+}
+
+/* Малките бутони вътре в редовете (GPS) */
+.icon-btn-small {
+    padding: 4px;
+}
+.icon-btn-small .material-icons-round {
+    font-size: 18px !important;
+}
+
+/* Долният ред с бутоните */
+.route-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.route-action-btn {
+    /* По-ниски бутони */
+    height: 34px;
+    padding: 0 16px;
+    border-radius: 17px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.route-action-btn.go {
+    background: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.route-action-btn.go .material-icons-round {
+    font-size: 16px !important;
+}
+
+
+
+
+
+body.dark-theme .route-row { border-color: #444; }
+
+
+/* --- МИНИМИЗИРАН BOTTOM SHEET --- */
+.bottom-sheet.sheet-minimized {
+    /* Сваляме го надолу (100%), но вадим 120px, за да се вижда заглавието */
+    transform: translateY(calc(100% - 120px)) !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Правим зоната за влачене да изглежда кликаема */
+.sheet-header-area {
+    cursor: pointer;
+}
+
+
+/* --- ROUTES SHEET STYLES --- */
+
+/* --- ROUTES SHEET STYLES --- */
+
+#routes-sheet {
+    /* Гарантираме, че панелът е готов за транзиции */
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    /* Добави това, за да не "бяга" нагоре при първо отваряне */
+	pointer-events: auto !important; 
+    max-height: 80vh; 
+    display: flex;
+    flex-direction: column;
+}
+
+#routes-sheet.sheet-minimized {
+    /* 1. Увеличаваме видимата част на 90px (беше 70px), за да се натиска по-лесно */
+    transform: translateY(calc(100% - 90px)) !important;
+    
+    /* 2. Важно: слагаме сянка, за да се вижда, че е там долу */
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+}
+
+#routes-drag-zone {
+    cursor: pointer;
+    background: var(--surface);
+    /* 3. Гарантираме, че хедърът винаги е отгоре и приема кликове */
+   pointer-events: auto !important; /* ВАЖНО */
+    z-index: 20; /* Да е над всичко в панела */
+    touch-action: none; /* Подобрява реакцията на тъч екрани */
+    /* Предотвратява избирането на текст при бързи кликове */
+    user-select: none; 
+    -webkit-user-select: none;
+    
+    /* Малко повече padding за удобство */
+    padding-bottom: 10px;
+}
+
+/* Ако имаш проблеми с X бутона, дай му висок z-index */
+#btn-close-routes {
+   pointer-events: auto !important;
+    z-index: 30;
+    width: 44px; /* По-голяма зона за клик */
+    height: 44px;
+}
+
+/* Клас за пешеходни пътеки (пунктир) */
+.walking-path-dash {
+    stroke-dasharray: 10, 10;
+    animation: dash-anim 30s linear infinite;
+}
+
+@keyframes dash-anim {
+    to { stroke-dashoffset: -1000; }
+}
+
+/* Икони за трансфер по картата */
+.transfer-marker-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 50%;
+    border: 2px solid #666;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    color: #333;
+    font-weight: bold;
+}
+
+
+/* --- БАЛОНЧЕТА С ИМЕНА НАД СПИРКИТЕ ПО МАРШРУТА --- */
+.route-stop-tooltip {
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid #999;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #333;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    white-space: nowrap;
+    margin-top: -2px;
+}
+/* Премахваме стрелкичката на Leaflet за по-чист вид */
+.leaflet-tooltip-top:before {
+    display: none;
+}
+
+/* --- FIX: Активен състояние на бутоните в Bottom Sheet (Часовника) --- */
+.sheet-actions-row .icon-btn.active {
+    background-color: #e3f2fd; /* Светло синьо за фон */
+    color: var(--primary);     /* Основният син цвят за иконата */
+    border: 1px solid var(--primary); /* Рамка, за да се вижда ясно */
+}
+
+/* Настройка за тъмна тема */
+body.dark-theme .sheet-actions-row .icon-btn.active {
+    background-color: #2c2c2e; /* Тъмен фон */
+    color: #64b5f6;            /* Светло синьо за иконата */
+    border-color: #64b5f6;
+}
+
+/* --- FIX: Активен бутон (Часовник) в ЛИНИИ (Line Details) --- */
+.line-detail-actions .icon-btn.active {
+    background-color: #e3f2fd; /* Светло синьо фон */
+    color: var(--primary);     /* Синя икона */
+    border: 1px solid var(--primary); /* Синя рамка */
+}
+
+/* Настройка за ТЪМНА ТЕМА */
+body.dark-theme .line-detail-actions .icon-btn.active {
+    background-color: #2c2c2e; /* Тъмен фон */
+    color: #64b5f6;            /* Светло синя икона */
+    border-color: #64b5f6;
+}
+
+/* --- ФИНАЛЕН ДИЗАЙН: ПЛОСКИ БУТОНИ С НОРМАЛЕН РАЗМЕР (КАТО ЗВЕЗДАТА) --- */
+
+/* 1. Настройка на контейнера на реда (Compact) */
+.list-item-container {
+    padding: 2px 12px !important; /* Много малък падинг горе/долу */
+    min-height: 48px;             /* Минимална височина за удобство */
+    gap: 0 !important;
+    justify-content: center;      /* Центрира съдържанието вертикално */
+}
+
+.list-header-row {
+    margin-bottom: 0 !important;
+    min-height: 48px;             /* Височина колкото бутоните */
+    display: flex;
+    align-items: center;
+}
+
+/* 2. Лентата с бутоните */
+.list-actions-bar, 
+.line-detail-actions {
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 48px;                 /* Фиксирана височина */
+    display: flex;
+    align-items: center;          /* Вертикално центриране */
+    justify-content: flex-end;
+}
+
+/* 3. БУТОНИТЕ - Размер като на Звездата */
+.list-actions-bar .icon-btn,
+.line-detail-actions .icon-btn,
+.sheet-actions-row .icon-btn {
+    width: 44px !important;       /* Ширина за кликване (Стандарт) */
+    height: 44px !important;      /* Височина за кликване */
+    
+    background: transparent !important; /* Без фон */
+    border: none !important;            /* Без рамка */
+    box-shadow: none !important;        /* Без сянка */
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    color: var(--on-surface-variant); /* Сив цвят по подразбиране */
+    margin-left: 2px;             /* Малко разстояние между тях */
+}
+
+/* 4. САМАТА ИКОНА (Вътре в бутона) - Голяма и ясна */
+.list-actions-bar .icon-btn .material-icons-round,
+.line-detail-actions .icon-btn .material-icons-round,
+.sheet-actions-row .icon-btn .material-icons-round {
+    font-size: 24px !important;   /* Стандартен размер (като звездата) */
+}
+
+/* Специално за бутона с текст (Time Table) да се събере */
+.btn-text-stack span {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    line-height: 1.1 !important;
+}
+
+/* 5. АКТИВЕН БУТОН (ЧАСОВНИК) */
+/* Само сменя цвета на иконата, без фон */
+.list-actions-bar .icon-btn.active,
+.line-detail-actions .icon-btn.active,
+.sheet-actions-row .icon-btn.active {
+    color: var(--primary) !important; /* Ярко синьо */
+    font-weight: normal !important;   /* Без удебеляване, само цвят */
+}
+
+/* Ефект при натискане */
+.list-actions-bar .icon-btn:active,
+.line-detail-actions .icon-btn:active,
+.sheet-actions-row .icon-btn:active {
+    background-color: rgba(0,0,0,0.05) !important; /* Кръгъл ефект при натиск */
+    border-radius: 50%;
+}
+
+/* 6. BOTTOM SHEET (Долното меню) */
+.sheet-actions-row {
+    padding: 0 16px 4px 16px !important;
+    justify-content: flex-end !important;
+    border-bottom: none !important;
+    min-height: 48px;
+}
+
+/* =============================================== */
+/*      СИГНАЛ ЗА РЕАЛНО ВРЕМЕ (GPS ICONS)        */
+/* =============================================== */
+
+/* 1. Анимация за пълнене (Черта по черта) */
+@keyframes wifi-fill {
+    0% { background-position: 100% 0%; }    /* Напълно скрито (Прозрачно) */
+    20% { background-position: 100% 0%; }   /* Пауза на скрито */
+    40% { background-position: 60% 40%; }   /* Първа чертичка */
+    60% { background-position: 35% 65%; }   /* Втора чертичка */
+    80% { background-position: 0% 100%; }   /* Пълно (Всичко зелено) */
+    100% { background-position: 0% 100%; }  /* Пауза на пълно */
+}
+
+/* 2. Общ стил за иконата */
+.signal-icon {
+    font-size: 20px !important;
+    vertical-align: middle;
+    margin-right: 4px;
+    margin-bottom: 3px;
+    display: inline-block;
+}
+
+/* 3. СЪСТОЯНИЕ: НА ЖИВО */
+.signal-icon.live {
+    /* 
+       ПРОМЯНА: Сменихме цвета от #006400 на #20E354
+       50% и 50.1% правят чертата рязка и ясна.
+    */
+    background: linear-gradient(45deg, #20E354 50%, transparent 50.1%);
+    
+    background-size: 250% 250%;
+    
+    /* Изрязваме фона по формата на иконата */
+    -webkit-background-clip: text;
+    background-clip: text;
+    
+    /* Правим текста прозрачен, за да се вижда фонът (зеленото) */
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    
+    /* Махаме сенките, за да е чисто */
+    filter: none !important;
+    text-shadow: none !important;
+    
+    /* Анимация за пълнене */
+    animation: wifi-fill 1.5s infinite linear;
+}
+
+/* 4. СЪСТОЯНИЕ: ПО РАЗПИСАНИЕ */
+.signal-icon.schedule {
+    color: #B0BEC5 !important; /* Светло синьо-сиво */
+    opacity: 0.8;
+    animation: none;
+    /* Тук може да оставим сянка, защото е статично */
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
+}
+
+/* Текстът на времето */
+.main-time {
+    color: white !important;
+    font-size: 22px !important;
+    font-weight: 800;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    margin-left: 0px;
+}
+
+
+/* В края на style.css */
+
+/* Стилове за търсене при създаване на къстъм спирка */
+.custom-search-item {
+    padding: 10px;
+    border-bottom: 1px solid var(--outline);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+.custom-search-item:hover { background-color: var(--background); }
+
+.btn-add-mini {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* Стил за добавените спирки в списъка */
+.added-stop-item {
+    background: var(--surface);
+    padding: 10px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    border: 1px solid var(--outline);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* ЗАГЛАВИЯ В КОМБИНИРАНИЯ ИЗГЛЕД (BOTTOM SHEET) */
+.combined-stop-header {
+    background: var(--background);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    color: var(--on-surface);
+    font-size: 14px;
+    margin-top: 16px;
+    margin-bottom: 8px;
+    border-left: 4px solid var(--primary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.combined-stop-header:first-child { margin-top: 0; }
+
+
+/* Добави най-долу в style.css */
+
+/* Дръжка за влачене в списъка за създаване/редакция */
+.sub-drag-handle {
+    cursor: grab;
+    color: var(--on-surface-variant); /* Същия цвят като в любими */
+    padding: 10px 8px 10px 0;         /* Голяма зона за хващане */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    font-size: 24px;                  /* Голям размер на иконата */
+}
+
+.sub-drag-handle:active { 
+    cursor: grabbing; 
+    color: var(--primary); 
+}
+
+/* Модификация на реда, за да изглежда като в любими */
+.added-stop-item {
+    background: var(--surface);
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--outline);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: transform 0.1s, box-shadow 0.2s; /* Плавност */
+    position: relative;
+    transform: translateZ(0); /* Хардуерно ускорение */
+}
+
+/* Клас при влачене */
+.added-stop-item.dragging {
+    opacity: 0.9;
+    background: #e3f2fd;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    z-index: 9999;
+    border: 2px solid var(--primary);
+}
+
+/* Нов стил за бутона "Добави +" в хедъра */
+.btn-add-custom {
+    background-color: var(--primary); /* Син фон */
+    color: white;
+    border: none;
+    border-radius: 20px; /* Заоблена форма */
+    padding: 6px 12px 6px 16px; /* Отстояния (малко повече отляво за текста) */
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px; /* Разстояние между текста и плюса */
+    cursor: pointer;
+    margin-left: 12px; /* Разстояние от заглавието "Любими" */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.btn-add-custom:active {
+    transform: scale(0.96);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* При тъмна тема да се вижда добре */
+body.dark-theme .btn-add-custom {
+    background-color: #64b5f6;
+    color: #121212;
+}
+
+/* --- НОВ ХЕДЪР ЗА ЛЮБИМИ (Подравнен) --- */
+
+/* Контейнерът вътре в хедъра */
+.fav-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Заглавието вляво, бутонът вдясно */
+    
+    width: 100%;
+    max-width: 600px; /* Същата ширина като .centered-content */
+    margin: 0 auto;   /* Центрираме самия контейнер */
+}
+
+/* --- MATERIAL DESIGN БУТОН --- */
+.btn-material-add {
+    background-color: var(--primary);
+    color: white;
+    
+    border: none;
+    border-radius: 24px; /* Pill shape */
+    
+    padding: 6px 16px 6px 12px; /* Малко повече място за иконата */
+    height: 36px;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    font-family: 'Roboto', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    text-transform: uppercase; /* Material стил (главни букви по желание) */
+    letter-spacing: 0.5px;
+    
+    cursor: pointer;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23); /* Material Shadow Level 2 */
+    
+    transition: all 0.2s cubic-bezier(.25,.8,.25,1);
+}
+
+.btn-material-add:hover {
+    box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23); /* Shadow Level 3 */
+    filter: brightness(1.1);
+}
+
+.btn-material-add:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); /* Shadow Level 1 */
+}
+
+.btn-material-add .material-icons-round {
+    font-size: 20px;
+}
+
+/* Тъмна тема корекция */
+body.dark-theme .btn-material-add {
+    background-color: #64b5f6; /* По-светло синьо за тъмен фон */
+    color: #121212;
+}
+
+/* Увери се, че този клас съществува и има !important */
+.hidden {
+    display: none !important;
+}
+
+/* Добави и това, за да изглежда модалът добре центриран */
+#fav-menu-modal .modal-content {
+    /* Нулираме transform, защото в главния modal-content има translateY */
+    transform: none !important; 
+    margin: auto;
+}
+
+/* --- CHANGELOG STYLES --- */
+.changelog-item {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    font-size: 15px;
+    color: var(--on-surface);
+    line-height: 1.4;
+}
+
+.changelog-bullet {
+    color: var(--primary);
+    margin-right: 10px;
+    font-weight: bold;
+    font-size: 18px;
+    line-height: 1;
+}
+
+
+/* --- WATERMARK SIGNATURE --- */
+.watermark-signature {
+    text-align: right;          /* Подравняване вдясно */
+    margin-top: 30px;           /* Разстояние от горните елементи */
+    margin-right: 4px;          /* Леко отстояние от ръба */
+    margin-bottom: 10px;        /* Разстояние от дъното */
+    
+    font-size: 13px;            /* Малък размер */
+    font-weight: 700;           /* Удебелен шрифт */
+    font-family: monospace;     /* Технически шрифт (по желание, изглежда cool) */
+    
+    color: var(--on-surface-variant); /* Взима цвета от темата */
+    opacity: 0.3;               /* Прозрачност за ефект на воден знак */
+    
+    user-select: none;          /* Да не може да се маркира текста */
+    pointer-events: none;       /* Да не пречи на кликове */
+}
+
+/* --- WATERMARK yordanowz --- */
+
+/* --- MODERN SETTINGS STYLES --- */
+
+/* Заглавие на секция */
+.settings-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--on-surface-variant);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 20px 0 8px 12px;
+    opacity: 0.8;
+}
+
+/* Карта (Контейнер на групата) */
+.settings-card {
+    background: var(--surface);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* Лека сянка */
+}
+
+/* Отделен ред в настройките */
+.settings-item {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--outline);
+    border-bottom-color: rgba(0,0,0,0.08); /* Много лека линия */
+    position: relative;
+    transition: background-color 0.2s;
+    min-height: 56px;
+}
+
+/* Премахване на линията за последния елемент */
+.settings-item.no-border {
+    border-bottom: none;
+}
+
+.settings-item.clickable:active {
+    background-color: var(--background);
+}
+
+/* Цветна кутийка за иконата */
+.settings-icon-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 14px;
+    flex-shrink: 0;
+}
+
+.settings-icon-box .material-icons-round {
+    font-size: 20px;
+}
+
+/* Текстът */
+.settings-text-col {
+    flex-grow: 1;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--on-surface);
+}
+
+/* Стрелкичка вдясно */
+.arrow-icon {
+    color: var(--on-surface-variant);
+    font-size: 20px;
+    opacity: 0.5;
+}
+
+/* --- МОДЕРЕН SELECT (БЕЗ РАМКИ) --- */
+.settings-select-modern {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--primary); /* Син цвят за стойността */
+    font-size: 15px;
+    font-weight: 500;
+    text-align: right;
+    padding-right: 20px; /* Място за стрелката */
+    outline: none;
+    cursor: pointer;
+    
+    /* Слагаме стрелката като фон */
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%231c75bc" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right center;
+    background-size: 20px;
+}
+
+/* --- SWITCH ЗА ТЪМНА ТЕМА --- */
+.theme-switch {
+    width: 44px;
+    height: 24px;
+    background-color: #e0e0e0;
+    border-radius: 12px;
+    position: relative;
+    transition: background-color 0.3s;
+}
+
+.theme-switch-knob {
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+
+
+/* Леки корекции за тъмна тема на разделителите */
+body.dark-theme .settings-item {
+    border-bottom-color: rgba(255,255,255,0.1);
+}
+
+
+/* --- ПОДОБРЕНИ ПАДАЩИ МЕНЮТА (BOX STYLE) --- */
+.settings-select-box {
+    appearance: none;
+    border: 1px solid var(--outline); /* Рамка */
+    border-radius: 8px;               /* Заобляне */
+    background-color: var(--background); /* Фон (сив) */
+    color: var(--on-surface);
+    
+    font-size: 14px;
+    font-weight: 500;
+    
+    padding: 8px 32px 8px 12px; /* Място за текста и стрелката */
+    outline: none;
+    cursor: pointer;
+    
+    /* Стрелка вдясно */
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%23555" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    background-size: 24px;
+    
+    min-width: 110px; /* Минимална ширина за еднаквост */
+}
+
+/* При тъмна тема */
+body.dark-theme .settings-select-box {
+    border-color: #444;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%23ccc" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+}
+
+
+
+
+
+
+
+
+
+body.dark-theme .revolut-img-fix {
+    filter: invert(1) brightness(2);
+}
+
+
+.settings-action-btn .material-icons-round {
+    font-size: 18px;
+}
+
+/* --- УНИФИЦИРАНИ БУТОНИ ВДЯСНО --- */
+
+/* 1. ГЛАВЕН КЛАС ЗА РАЗМЕР (Прилага се на всичко вдясно) */
+.settings-right-widget {
+    width: 130px;        /* Фиксирана ширина за всички */
+    height: 40px;        /* Фиксирана височина */
+    margin-left: auto;   /* Избутва вдясно */
+    display: flex;       /* За центриране на съдържанието */
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;  /* Еднакво заобляне */
+}
+
+/* 2. СТИЛ ЗА БУТОНА СПОДЕЛИ (СИН ПРАВОЪГЪЛНИК) */
+.btn-share-rect {
+    background-color: var(--primary); /* Син цвят (от темата) */
+    color: white;
+    font-weight: 700;
+    font-size: 14px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    border: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* 3. СТИЛ ЗА КАРТИНКИТЕ (Google Play & Revolut) */
+.img-contain {
+    object-fit: contain;    /* Да се събере в кутийката */
+    object-position: right; /* Подравнено вдясно */
+    /* Важно: Картинките нямат background, те самите са бутони */
+}
+
+/* Уверяваме се, че курсорът е ръчичка */
+.settings-item.clickable {
+    cursor: pointer;
+}
+
+/* --- СПЕЦИАЛНА НАСТРОЙКА ЗА REVOLUT --- */
+
+.revolut-img-fix {
+    /* 1. Центрираме го в пространството от 130px */
+    object-position: center !important; 
+    
+    /* 2. Гарантираме, че няма фон (ако е имало) */
+    background-color: transparent !important;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+	font-size: 38px;
+    height: 40px; 
+    /* 3. Малко отстояние, за да не е огромно */
+    padding: 1px; 
+}
+
+/* --- ТЪМНА ТЕМА: Обръщаме черното лого в бяло --- */
+body.dark-theme .revolut-img-fix {
+    /* Инвертираме цветовете (черното става бяло) */
+    filter: invert(1);
+}
+
+/* style.css - Най-долу */
+
+.selection-chip {
+    background: var(--background);
+    border: 1px solid var(--outline);
+    border-radius: 20px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.selection-chip span {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--on-surface);
+}
+
+.selection-chip .remove-icon {
+    font-size: 16px;
+    color: #d32f2f;
+    cursor: pointer;
+}
+
+/* style.css - Най-долу */
+
+/* Стил за маркирана спирка в режим "Избор" */
+.map-marker-wrapper.selected-tick {
+    /* Добавяме лека зелена сянка/сияние около самата икона */
+    filter: drop-shadow(0 0 4px #4CAF50);
+}
+
+/* Самото тикче (използваме псевдо-елемент, за да не пипаме HTML-а) */
+.map-marker-wrapper.selected-tick::after {
+    content: 'check'; /* Кодът за иконата от Material Icons */
+    font-family: 'Material Icons Round';
+    
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    
+    width: 22px;
+    height: 22px;
+    background-color: #4CAF50; /* Зелено */
+    color: white;
+    
+    border-radius: 50%;
+    border: 2px solid white; /* Бял кант за контраст */
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    font-size: 16px;
+    font-weight: bold;
+    z-index: 100; /* Най-отгоре */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    
+    animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Анимация за "изскачане" на тикчето */
+@keyframes popIn {
+    from { transform: scale(0); }
+    to { transform: scale(1); }
+}
+
+
+/* style.css */
+
+/* Значка за ГРУПА (Обединена спирка) - Горе ВЛЯВО */
+.marker-custom-badge {
+    position: absolute;
+    /* Слагаме отрицателни стойности, но по-малки, за да застъпи иконата */
+    top: -4px;   
+    left: -4px; 
+    
+    color: white; 
+    font-size: 13px; /* Малко по-фин шрифт */
+    font-weight: bold;
+    
+    /* Тюркоазен цвят (Material Teal 600) */
+    background-color: #00897B; 
+    
+    border: 2px solid white; /* Бял кант, за да се отделя от картата */
+    border-radius: 50%;
+    
+    width: 20px; /* Малко по-голяма, за да се вижда добре */
+    height: 20px;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3); /* Сянка за дълбочина */
+    z-index: 20;
+    
+    /* Анимация при появяване */
+    animation: popInBadge 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* При селектирана (голяма) спирка */
+.map-marker-wrapper.selected .marker-custom-badge {
+    width: 26px;
+    height: 26px;
+    font-size: 16px;
+    /* При голямата икона също застъпваме леко */
+    top: -2px;
+    left: -2px;
+}
+
+/* Анимация за изскачане */
+@keyframes popInBadge {
+    from { transform: scale(0); }
+    to { transform: scale(1); }
+}
+
+/* --- КОРЕКЦИЯ И ЗА ЗВЕЗДАТА (ЗА ДА СА СИМЕТРИЧНИ) --- */
+/* Намери съществуващия клас .marker-fav-star и се увери, че е така: */
+.marker-fav-star {
+    position: absolute;
+    top: -4px;    /* Същата височина като другата значка */
+    right: -4px;  /* Горе ВДЯСНО */
+    
+    /* ...останалите ти стилове... */
+    width: 20px;
+    height: 20px;
+    font-size: 13px;
+    border: 2px solid white; /* Добавяме кант и тук за еднакъв стил */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* При селектирана звезда */
+.map-marker-wrapper.selected .marker-fav-star {
+    top: -2px;
+    right: -2px;
+    width: 26px;
+    height: 26px;
+    font-size: 16px;
+}
+/* style.css - Най-долу */
+
+/* Активно състояние на бутона за Трафик */
+#btn-traffic.active {
+    background-color: var(--primary); /* Става син (или цвета на темата) */
+    color: white; /* Иконата става бяла */
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.2); /* Лека вътрешна сянка за ефект "натиснат" */
+}
+
+/* style.css - Най-долу */
+
+/* Бутони за докладване */
+.report-btn {
+    flex: 1;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform 0.1s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.report-btn:active {
+    transform: scale(0.95);
+    filter: brightness(0.9);
+}
+
+/* --- ЗНАЧКА ЗА КОНТРОЛА (Полицейска шапка) --- */
+.marker-alert-badge {
+    position: absolute;
+    /* Позиция: Долу Вдясно (застъпва иконата) */
+    bottom: -4px;
+    right: -4px;
+    
+    width: 20px;
+    height: 20px;
+    
+    background-color: #d32f2f; /* Червено */
+    color: white;
+    
+    border-radius: 50%;
+    border: 2px solid white;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+    z-index: 25; /* Най-най-отгоре */
+    
+    animation: popInBadge 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* При голяма икона */
+.map-marker-wrapper.selected .marker-alert-badge {
+    width: 26px;
+    height: 26px;
+    bottom: -2px;
+    right: -2px;
+}
+
+/* Иконата вътре (police) */
+.marker-alert-badge .material-icons-round {
+    font-size: 14px;
+}
+.map-marker-wrapper.selected .marker-alert-badge .material-icons-round {
+    font-size: 18px;
+}
+
+/* В style.css - Най-долу */
+
+.report-counter {
+    background-color: rgba(0, 0, 0, 0.1); /* Лек фон */
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 800;
+    margin-top: 2px;
+    min-width: 20px;
+    text-align: center;
+}
+
+/* Опция: Ако искаш да е като значка в горния десен ъгъл, разкоментирай това: */
+/*
+.report-counter {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background-color: white;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    margin-top: 0;
+}
+*/
+
+/* В style.css */
+
+/* Стил за ред във филтъра */
+.filter-row {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--background);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.filter-row.active {
+    background: #e3f2fd; /* Активен цвят (светло синьо) */
+    border: 1px solid var(--primary);
+}
+
+body.dark-theme .filter-row.active {
+    background: #1e2a38;
+}
+
+.filter-icon-box {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-right: 12px;
+    color: white;
+    font-size: 18px;
+}
+
+.filter-label {
+    flex-grow: 1;
+    font-weight: 500;
+}
+
+.filter-check {
+    width: 20px; height: 20px;
+    border: 2px solid var(--outline);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: transparent;
+}
+
+.filter-row.active .filter-check {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+/* В style.css - Най-долу */
+
+#btn-map-filter {
+    /* ВАЖНО: Това прави бутона кликаем, въпреки че контейнерът е пропусклив */
+    pointer-events: auto !important; 
+    
+    /* Гарантираме, че е над картата */
+    z-index: 2005; 
+    
+    /* Уверяваме се, че курсорът става на ръчичка */
+    cursor: pointer;
+}
+
+/* style.css */
+
+/* Ред в менюто за филтри */
+.filter-menu-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--background);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+    justify-content: space-between;
+}
+
+.filter-menu-item:active {
+    filter: brightness(0.95);
+}
+
+.filter-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.filter-icon-circle {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: white;
+    font-size: 20px;
+}
+
+.filter-label-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--on-surface);
+}
+
+/* Суич (използваме съществуващия, но го стилизираме леко за тук) */
+.filter-switch {
+    width: 44px;
+    height: 24px;
+    background-color: #ccc;
+    border-radius: 12px;
+    position: relative;
+    transition: background-color 0.3s;
+    pointer-events: auto; /* За да може да се цъка отделно */
+}
+
+.filter-switch.active {
+    background-color: var(--primary);
+}
+
+.filter-switch-knob {
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.filter-switch.active .filter-switch-knob {
+    transform: translateX(20px);
+}
+
+/* Стрелка надясно за подменютата */
+.chevron-right {
+    color: var(--on-surface-variant);
+    opacity: 0.5;
+}
+
+/* 1. ГЛАВЕН КОНТЕЙНЕР (Лентата горе) */
+
+
+
+
+/* 2. ТЪРСАЧКАТА (Лявата част) */
+#map-search-container .search-bar {
+    flex-grow: 1; /* Заема цялото свободно място */
+    height: 48px; /* Еднаква височина с бутона */
+    
+    background: var(--surface);
+    border-radius: 12px; /* Същото заобляне като бутона */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    
+    display: flex;
+    align-items: center;
+    padding: 0 12px; /* Вътрешен отстъп */
+    
+    margin: 0; /* Махаме всякакви марджини */
+    min-width: 0; /* Критично за Flexbox! */
+    pointer-events: auto; /* Самата търсачка е активна */
+}
+
+/* 3. ТЕКСТОВОТО ПОЛЕ ВЪТРЕ */
+#map-search-input {
+    width: 100%; /* Заема цялото място в search-bar */
+    min-width: 0; /* Позволява свиване при нужда */
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 16px;
+    color: var(--on-surface);
+    
+    /* За да не се реже текстът */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-left: 8px; /* Разстояние от лупата */
+}
+
+/* 4. БУТОНЪТ ФИЛТЪР (Дясната част - Квадратчето) */
+#btn-map-filter {
+    /* Фиксирани размери - Квадрат */
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    flex-shrink: 0 !important; /* ЗАБРАНЯВАМЕ смачкването */
+    
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    border: none;
+    
+    /* Центриране на иконата */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    color: var(--on-surface-variant);
+    pointer-events: auto !important; /* За да работи кликът */
+    cursor: pointer;
+}
+
+/* --- FIX ЗА ТЪРСАЧКАТА ПРИ СЪЗДАВАНЕ НА СПИРКА --- */
+
+/* 1. Контейнерът (Редът) */
+.custom-creator-search-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;          /* Разстояние между полето и бутона */
+    padding: 16px;     /* Външни отстояния */
+    width: 100%;       /* Заема цялата ширина */
+    box-sizing: border-box;
+}
+
+/* 2. Търсачката (Полето) */
+.custom-search-bar-fix {
+    flex-grow: 1;      /* Заема цялото останало място */
+    min-width: 0;      /* ВАЖНО: Позволява на полето да се свива, вместо да бута бутона */
+    margin-bottom: 0 !important; /* Махаме долния отстъп на static-search */
+    height: 48px;      /* Еднаква височина с бутона */
+    display: flex;
+    align-items: center;
+}
+
+/* 3. Бутонът за карта (Фиксиран квадрат) */
+.icon-btn-square {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;    /* ВАЖНО: Забраняваме му да се смачква! */
+    
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: 12px; /* Леко заобляне */
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--primary);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.icon-btn-square:active {
+    background-color: var(--background);
+    transform: scale(0.96);
+}
+
+/* Тъмна тема корекция */
+body.dark-theme .icon-btn-square {
+    border-color: #444;
+}
+
+
+
+/* --- LANDSCAPE MODE (Завъртане на екрана) --- */
+@media (orientation: landscape) and (max-height: 600px) {
+    
+    /* 1. Тялото на приложението */
+    body {
+        overflow: hidden; 
+    }
+
+    /* 2. Преместване на Менюто (Навигацията) отдолу -> вляво */
+    .bottom-nav {
+        width: 80px;             
+        height: 100%;            
+        top: 0;
+        left: 0;
+        right: auto;             
+        bottom: auto;            
+        
+        flex-direction: column;  
+        /* ПРОМЯНА: Използваме space-evenly, за да се разпределят по цялата височина */
+        justify-content: space-evenly; 
+        align-items: center;
+        
+        /* ПРОМЯНА: Махаме gap-а, за да се съберат */
+        gap: 0;               
+        
+        border-top: none;        
+        border-right: 1px solid var(--outline); 
+        
+        /* Добавяме скрол за всеки случай, ако екранът е супер малък */
+        overflow-y: auto; 
+        
+        padding-left: env(safe-area-inset-left); 
+        padding-top: 10px;
+        padding-bottom: 10px;
+        background: var(--surface); /* Уверяваме се, че има фон */
+    }
+
+    /* 3. Корекция на иконите в менюто */
+    .nav-item {
+        /* ПРОМЯНА: Намаляваме отстоянията */
+        padding: 4px 0;
+        width: 100%;
+        /* Това позволява на бутоните да се смачкат леко, ако няма място */
+        flex-shrink: 1; 
+        min-height: 50px; /* Минимална височина за кликане */
+        justify-content: center;
+    }
+    
+    /* Намаляваме малко иконките в този режим, ако е тясно */
+    .nav-item .material-icons-round {
+        font-size: 22px;
+        margin-bottom: 2px;
+    }
+    
+    .nav-label {
+        font-size: 10px;
+    }
+
+    /* 4. Корекция на Екраните (Карта, Търсене и др.) */
+    .screen {
+        padding-bottom: 0 !important; 
+        
+        margin-left: 80px; 
+        width: calc(100% - 80px); 
+        height: 100vh;
+    }
+
+    /* Допълнително за iPhone с Notch в landscape */
+    .screen {
+        margin-left: calc(80px + env(safe-area-inset-left));
+        width: calc(100% - 80px - env(safe-area-inset-left));
+        padding-right: env(safe-area-inset-right);
+    }
+    
+    /* 5. Наместване на Bottom Sheet-а (панела със спирките) */
+    #bottom-sheet {
+        max-height: 85vh; 
+        width: 380px;     
+        left: 20px;       
+        right: auto;      
+        margin-left: 80px; 
+        border-radius: 16px;
+    }
+    
+    #bottom-sheet.sheet-minimized {
+        width: 280px;
+    }
+
+    /* 6. Позициониране на бутони върху картата */
+    /* Трябва да ги преместим леко, за да не са твърде вдясно */
+    .fab, .fab-extended {
+        right: calc(20px + env(safe-area-inset-right)) !important;
+    }
+    
+    /* Търсачката също трябва да се свие леко */
+
+}
+
+/* --- FIX ЗА СКРОЛВАНЕ НА ФИЛТЪР МЕНЮТО (LANDSCAPE) --- */
+
+/* 1. Настройка на самия прозорец */
+#modal-centered-filter .modal-content {
+    /* Ограничаваме височината, за да не излиза от екрана */
+    max-height: 85vh !important; 
+    
+    /* Правим го гъвкава кутия, за да отделим хедъра от съдържанието */
+    display: flex;
+    flex-direction: column;
+    
+    /* Гарантираме, че overflow е visible за flex контейнера, но hidden за ъглите */
+    overflow: hidden !important; 
+}
+
+/* 2. Настройка на тялото (списъка с настройки), за да се скролва */
+#filter-content-body {
+    /* Ако съдържанието е дълго -> скрол */
+    overflow-y: auto !important;
+    
+    /* Плавно скролване за iOS */
+    -webkit-overflow-scrolling: touch;
+    
+    /* Заема останалото място под хедъра */
+    flex: 1;
+    
+    /* Предотвратява скролването на картата отзад */
+    overscroll-behavior: contain;
+}
+
+/* 3. Допълнителна застраховка за Landscape режим */
+@media (orientation: landscape) {
+    #modal-centered-filter {
+        /* При много ниски екрани, подравняваме леко нагоре */
+        align-items: center; 
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+    
+    #modal-centered-filter .modal-content {
+        /* В landscape може да е малко по-широко ако трябва, но 320px е ок */
+        margin: auto;
+    }
+}
+
+/* --- SIMPLE STOP MARKER (Прости кръгчета) --- */
+.stop-marker-simple {
+    width: 100%;
+    height: 100%;
+    background-color: #29B6F6; /* Светло синьо */
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    box-sizing: border-box;
+}
+
+/* Когато спирката е избрана, кръгчето става по-голямо и с друг цвят */
+.map-marker-wrapper.selected .stop-marker-simple {
+    background-color: #1c75bc; /* Тъмно синьо */
+    border-width: 3px;
+}
+
+/* Корекция на значките (Звезда и Група) при малки кръгчета */
+.map-marker-wrapper .simple-badge-adjust {
+    top: -4px;
+    right: -4px;
+    width: 14px;
+    height: 14px;
+    font-size: 10px;
+}
+
+/* --- UI ЗА НАСТРОЙКИТЕ ВЪВ ФИЛТЪРА --- */
+.filter-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--on-surface-variant);
+    text-transform: uppercase;
+    margin: 16px 0 8px 0;
+    padding-left: 4px;
+}
+
+/* Контейнер за избор на стил (Segmented Control) */
+.style-selector-row {
+    display: flex;
+    background: var(--background);
+    padding: 4px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+}
+
+.style-option {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--on-surface-variant);
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.style-option.active {
+    background: var(--surface);
+    color: var(--primary);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    font-weight: 700;
+    border-color: var(--outline);
+}
+
+/* Слайдер за Zoom */
+.zoom-slider-container {
+    background: var(--background);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.zoom-slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--on-surface-variant);
+}
+
+input[type=range].custom-range {
+    width: 100%;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+/* --- SIMPLE STOP MARKER (Прости кръгчета) --- */
+.stop-marker-simple {
+    width: 100%;
+    height: 100%;
+    /* ПРОМЯНА: Винаги тъмно синьо, за да се различава от тролеите */
+    background-color: #0D47A1; 
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    box-sizing: border-box;
+    transition: background-color 0.3s;
+}
+
+/* При тъмна тема - запазваме го същото или леко по-светло, ако искаш */
+body.dark-theme .stop-marker-simple {
+    background-color: #0D47A1; 
+    border-color: #ccc; 
+}
+
+/* Избраната спирка (винаги по-ярка/светла, за да изпъкне) */
+.map-marker-wrapper.selected .stop-marker-simple {
+    background-color: #1c75bc; 
+    border-width: 3px;
+    transform: scale(1.2); /* Леко уголемяване */
+}
+
+/* --- VEHICLE DOT (Точки за колите при Zoom Out) --- */
+.vehicle-dot-simple {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 1px solid white; /* Бял кант да се вижда цвета */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    box-sizing: border-box;
+}
+
+/* --- КОМПАКТНО МЕНЮ ФИЛТРИ --- */
+.filter-section-title {
+    font-size: 11px; /* По-малък шрифт */
+    font-weight: 700;
+    color: var(--on-surface-variant);
+    text-transform: uppercase;
+    margin: 12px 0 4px 6px; /* По-сбито */
+}
+
+/* Сбит ред за избор на стил */
+.style-selector-row {
+    display: flex;
+    background: var(--background);
+    padding: 2px; /* По-малко падинг */
+    border-radius: 10px;
+    margin-bottom: 8px;
+}
+
+.style-option {
+    padding: 6px; /* По-компактни бутони */
+    font-size: 13px;
+}
+
+/* Сбит контейнер за слайдери */
+.zoom-slider-container {
+    background: var(--background);
+    border-radius: 10px;
+    padding: 8px 12px; /* Компактно */
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+/* Заглавие вътре в слайдера */
+.slider-header-row {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.slider-label {
+    font-size: 12px; 
+    font-weight: 600; 
+    color: var(--on-surface);
+}
+
+.slider-val {
+    font-size: 12px; 
+    font-weight: bold; 
+    color: var(--primary);
+}
+
+.zoom-slider-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px; /* Много ситен помощен текст */
+    opacity: 0.6;
+    margin-top: -2px;
+}
+
+input[type=range].custom-range {
+    width: 100%;
+    height: 4px; /* По-тънка линия */
+    accent-color: var(--primary);
+    cursor: pointer;
+    margin: 6px 0;
+}
+
+/* --- НОВИ БУТОНИ ЗА ПРЕВОЗНИ СРЕДСТВА (GRID) --- */
+.vehicle-filter-container {
+    background: var(--background);
+    border-radius: 16px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.vehicle-filter-header {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--on-surface-variant);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+
+
+/* Когато е ВКЛЮЧЕНО (Свети в цвят) */
+.vehicle-toggle-btn.active {
+    opacity: 1;
+    filter: none; /* Връща цвета */
+    border: 2px solid transparent; /* Махаме сивия бордър */
+    color: white !important; /* Текстът и иконата стават бели */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    transform: translateY(-2px);
+}
+
+.vehicle-toggle-btn .material-icons-round {
+    font-size: 26px;
+    margin-bottom: 4px;
+}
+
+.vehicle-toggle-btn span {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* БУТОН "ВСИЧКИ" (Най-долу, широк) */
+.vehicle-all-btn {
+    grid-column: span 4; /* Заема целия ред */
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+    border-radius: 12px;
+    padding: 10px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* Тъмна тема корекции */
+body.dark-theme .vehicle-filter-container {
+    background: rgba(255,255,255,0.05);
+}
+body.dark-theme .vehicle-toggle-btn {
+    background: #2c2c2e;
+    border-color: #444;
+}
+body.dark-theme .vehicle-all-btn {
+    background: #1b5e20;
+    color: #a5d6a7;
+    border-color: #2e7d32;
+}
+
+/* --- НОВ ДИЗАЙН ЗА ФИЛТРИТЕ (MATERIAL DESIGN) --- */
+
+.vehicle-filter-container {
+    background: var(--surface); /* Бял фон за контейнера */
+    border-radius: 20px;       /* Силно заобляне */
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05); /* Много нежна сянка */
+    border: 1px solid var(--outline); /* Тънка рамка */
+}
+
+/* Заглавието "ПОКАЖИ ПРЕВОЗНИ СРЕДСТВА" */
+.vehicle-filter-header {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--on-surface-variant);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.8;
+}
+
+.vehicle-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 4 равни колони */
+    gap: 10px; /* Разстояние между бутоните */
+}
+
+/* САМИЯТ БУТОН */
+.vehicle-toggle-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    
+    height: 75px; /* Малко по-високи за удобство */
+    
+    background: var(--background); /* Сив фон когато е изключен */
+    border: 2px solid transparent;
+    border-radius: 16px; /* Хубаво заобляне */
+    
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+    
+    /* Когато е изключен: леко прозрачен и черно-бял */
+    opacity: 0.7;
+    filter: grayscale(100%);
+    box-shadow: none;
+}
+
+/* Когато е ВКЛЮЧЕН (ACTIVE) */
+.vehicle-toggle-btn.active {
+    opacity: 1;
+    filter: none; /* Връщаме цветовете на иконата */
+    color: white !important; /* Текстът става бял */
+    
+    /* Сянка, която взима цвета на бутона (glow effect) */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    
+    transform: translateY(-2px); /* Леко повдигане */
+}
+
+/* Контейнер за картинката вътре */
+.vehicle-btn-icon-wrapper {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 6px;
+    background: white; /* Бяло кръгче зад иконата */
+    border-radius: 50%;
+    padding: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Самата картинка (png) */
+.vehicle-filter-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Текстът отдолу (АВТОБУС) */
+.vehicle-btn-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+/* --- БУТОНЪТ "ВСИЧКИ" --- */
+.vehicle-all-btn {
+    grid-column: span 4;
+    background: #E8F5E9; /* Много светло зелено */
+    color: #2E7D32;      /* Тъмно зелен текст */
+    border: none;
+    border-radius: 12px;
+    padding: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.2s;
+}
+
+.vehicle-all-btn:active {
+    background: #C8E6C9;
+    transform: scale(0.98);
+}
+
+/* Тъмна тема корекции */
+body.dark-theme .vehicle-filter-container {
+    background: #1e1e1e;
+    border-color: #333;
+}
+body.dark-theme .vehicle-toggle-btn {
+    background: #2c2c2e;
+}
+body.dark-theme .vehicle-btn-icon-wrapper {
+    background: rgba(255,255,255,0.1);
+}
+body.dark-theme .vehicle-all-btn {
+    background: #1B5E20;
+    color: #A5D6A7;
+}
+
+/* --- ФИЛТЪР ТЪРСАЧКА И ЧИПОВЕ --- */
+
+/* 1. Търсачката */
+.filter-search-container {
+    position: relative;
+    margin-bottom: 12px;
+}
+
+.filter-search-input-wrapper {
+    display: flex;
+    align-items: center;
+    background: var(--background);
+    border: 1px solid var(--outline);
+    border-radius: 12px;
+    padding: 0 12px;
+    height: 48px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+    transition: all 0.2s;
+}
+
+.filter-search-input-wrapper:focus-within {
+    background: var(--surface);
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.filter-search-input {
+    flex-grow: 1;
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    color: var(--on-surface);
+    margin-left: 8px;
+    outline: none;
+}
+
+/* 2. Падащо меню с резултати */
+
+
+
+
+
+
+
+.filter-search-item:last-child { border-bottom: none; }
+
+/* 3. Контейнер за избраните линии (Chips) */
+.selected-lines-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+    min-height: 0; /* Свива се, ако няма */
+}
+
+/* Самият чип (Етикет) */
+.line-filter-chip {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: transform 0.1s;
+}
+
+.line-filter-chip:active { transform: scale(0.95); }
+
+.line-filter-chip .remove-icon {
+    font-size: 16px;
+    margin-left: 6px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 50%;
+    padding: 2px;
+}
+
+/* Тъмна тема */
+body.dark-theme .filter-search-dropdown {
+    border-color: #444;
+}
+
+/* --- RIDE ALONG AS BOTTOM SHEET --- */
+
+#screen-ride-along.ride-along-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -5px 25px rgba(0,0,0,0.2);
+    z-index: 6000; /* Над картата */
+    
+    display: flex;
+    flex-direction: column;
+    
+    height: 50vh; /* Начална височина */
+    max-height: 100dvh; /* Позволява до 100% */
+    
+    transition: transform 0.3s ease;
+    transform: translateY(0);
+    will-change: height, transform;
+}
+
+#screen-ride-along.hidden {
+    transform: translateY(110%) !important;
+    display: flex !important;
+}
+
+/* ВАЖНО: Това оправя влаченето на Android/iOS */
+#ra-drag-zone {
+    touch-action: none; 
+    cursor: grab;
+    background: var(--surface); /* Уверяваме се, че е плътно */
+    border-radius: 20px 20px 0 0;
+    padding-bottom: 0; /* Да няма дупка */
+}
+
+#ra-drag-zone:active {
+    cursor: grabbing;
+}
+
+.ra-content {
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+    /* Намаляваме падинга, защото махнахме бутона Изход */
+    padding-bottom: calc(20px + env(safe-area-inset-bottom)); 
+    background: var(--background);
+}
+
+/* Landscape корекция */
+@media (orientation: landscape) and (max-height: 600px) {
+    #screen-ride-along.ride-along-sheet {
+        width: 400px;
+        height: 100vh !important;
+        right: 0;
+        left: auto;
+        border-radius: 20px 0 0 20px;
+        transform: translateX(0);
+    }
+    #screen-ride-along.hidden {
+        transform: translateX(110%) !important;
+    }
+}
+
+/* --- RIDE ALONG HEADER FIX --- */
+
+/* --- TIMELINE COLORS FIX --- */
+
+/* Точката - по подразбиране ще взима цвят от inline style, но ако е passed, трябва да е сива */
+.timeline-stop-item.passed .stop-dot { 
+    border-color: #ccc !important; /* ВАЖНО: !important презаписва inline цвета */
+    background-color: #eee !important;
+}
+
+/* Вертикалната линия - по подразбиране ще я оцветим с JS */
+.timeline-line-bg {
+    /* Background color ще се задава от JS */
+    width: 4px;
+    opacity: 0.3; /* Лека прозрачност, за да не е твърде натрапчиво */
+}
+
+/* Линията за "минало" - правим я сива, за да покрива цветната */
+.timeline-line-passed {
+    background: #ccc !important; 
+    z-index: 1;
+    opacity: 1;
+}
+
+
+
+/* --- COMPACT RIDE ALONG HEADER --- */
+
+/* 1. Намаляваме зоната на дръжката (сивата чертичка) */
+#ra-drag-zone .sheet-handle-bar {
+    height: 14px;       /* Беше 24px -> Свиваме го наполовина */
+    padding-top: 4px;   /* Намаляваме отстоянието отгоре */
+    padding-bottom: 0;  /* Без отстояние отдолу */
+}
+
+/* 2. Самата дръжка да е малко по-тънка */
+#ra-drag-zone .sheet-handle {
+    height: 3px;
+    width: 32px;
+}
+
+
+/* 4. Контейнерът за текста (Номер + Дестинация) */
+.ra-title-box {
+    display: flex;       
+    align-items: baseline; /* Подравняване по базовата линия на шрифта */
+    gap: 6px;            /* Малко разстояние между номера и текста */
+    overflow: hidden;    /* За да не излиза текстът */
+}
+
+
+/* 7. Бутонът "Х" за затваряне */
+#ra-drag-zone .close-btn {
+    width: 28px;  /* По-малък бутон */
+    height: 28px;
+    min-width: 28px;
+}
+#ra-drag-zone .close-btn .material-icons-round {
+    font-size: 18px; /* По-малка икона */
+}
+
+/* --- COMPACT RIDE ALONG HEADER --- */
+
+/* Намаляваме още малко зоната на дръжката */
+#ra-drag-zone .sheet-handle-bar {
+    height: 12px;       /* Беше 14px */
+    padding-top: 4px;
+    padding-bottom: 0;
+}
+
+/* Хедърът - максимално сбит */
+.ra-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; 
+    
+    /* Намаляваме падингите: 2px отдолу */
+    padding: 0 16px 2px 16px; 
+    
+    border-bottom: 1px solid var(--outline);
+    min-height: 32px; /* Беше 36px - още по-ниско */
+}
+
+/* Дестинацията - по-малък шрифт */
+#ride-along-subtitle {
+    font-size: 11px; /* Беше 13px - намалено */
+    color: var(--on-surface-variant);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+    margin: 0;
+    line-height: 1;
+    opacity: 0.8; /* Леко по-бледо */
+    padding-bottom: 2px; /* За да се изравни хубаво с големия номер */
+}
+
+/* Номерът - лека корекция */
+#ride-along-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+/* --- COMPACT FILTER MENU FIX --- */
+
+/* 1. Контейнерът на превозните средства */
+.vehicle-filter-container {
+    padding: 10px;       /* Намалено от 16px */
+    margin-bottom: 8px;  /* Намалено от 16px */
+    border-radius: 16px;
+}
+
+/* Заглавието "ПОКАЖИ ПРЕВОЗНИ СРЕДСТВА" */
+.vehicle-filter-header {
+    margin-bottom: 6px;  /* Намалено от 12px */
+    font-size: 11px;
+}
+
+/* 2. Самите бутони (Автобус, Трамвай...) */
+.vehicle-toggle-btn {
+    height: 60px;        /* Намалено от 75px */
+    border-radius: 12px;
+}
+
+/* Картинката вътре в бутона */
+.vehicle-btn-icon-wrapper {
+    width: 28px;         /* Намалено от 36px */
+    height: 28px;
+    margin-bottom: 2px;
+    padding: 3px;
+}
+
+/* Текстът под картинката */
+.vehicle-btn-label {
+    font-size: 9px;
+}
+
+/* 3. Бутонът "Всички" */
+.vehicle-all-btn {
+    padding: 8px;        /* Намалено */
+    margin-top: 6px;
+    font-size: 13px;
+    height: 36px;
+}
+
+/* 4. Редовете (Спирки, Външен вид) */
+.filter-menu-item {
+    padding: 8px 12px;   /* Намалено от 12px 16px */
+    margin-bottom: 6px;  /* Намалено от 10px */
+    min-height: 48px;    /* Фиксирана по-малка височина */
+    border-radius: 12px;
+}
+
+/* Иконите в кръгчетата отляво */
+.filter-icon-circle {
+    width: 28px !important;  /* Намалено от 32px */
+    height: 28px !important;
+    font-size: 16px !important;
+}
+
+.filter-label-text {
+    font-size: 14px;     /* Малко по-малък шрифт */
+}
+
+/* 5. Слайдерът за Zoom */
+.zoom-slider-container {
+    padding: 10px 12px;  /* Намалено */
+}
+
+input[type=range].custom-range {
+    margin: 8px 0;       /* По-малко разстояние */
+}
+
+/* Времето в списъка (Timeline) */
+.list-row-eta {
+    font-size: 13px;
+    font-weight: 800;
+    margin-right: 8px; /* Разстояние до иконата */
+    min-width: 50px;   /* Фиксирана ширина за подравняване */
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* --- RIDE ALONG LIST IMPROVEMENTS --- */
+
+/* 1. Ръчичка и цялостно поведение на реда */
+.timeline-stop-item {
+    cursor: pointer; /* Ръчичка при минаване с мишка */
+    transition: background-color 0.2s;
+}
+.timeline-stop-item:active {
+    background-color: rgba(0,0,0,0.05); /* Лек ефект при натискане */
+}
+
+/* 2. Маркирана спирка (Дебел шрифт) */
+.timeline-stop-item.selected-stop .timeline-stop-name {
+    font-weight: 900 !important; /* Много дебело */
+    transform: scale(1.02);      /* Леко уголемяване */
+    transform-origin: left;
+    transition: all 0.2s;
+    color: var(--on-surface);    /* Уверяваме се, че е тъмно, не сиво */
+}
+
+/* 3. Минали спирки (Сиви и Задраскани) */
+.timeline-stop-item.passed .timeline-stop-name {
+    text-decoration: line-through; /* Задраскване */
+    opacity: 0.6;                  /* Още по-бледо */
+    color: var(--on-surface-variant);
+}
+
+/* Уверяваме се, че кодът на спирката също избледнява */
+.timeline-stop-item.passed .timeline-stop-code {
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+
+/* --- SOCIAL / COMMUNITY TAB STYLES --- */
+
+/* Контейнер за въвеждане на Никнейм */
+#nickname-setup-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 80vh;
+    text-align: center;
+    padding: 20px;
+}
+
+.nickname-input {
+    font-size: 18px;
+    padding: 12px;
+    border: 2px solid var(--primary);
+    border-radius: 12px;
+    width: 80%;
+    margin-bottom: 20px;
+    text-align: center;
+    background: var(--surface);
+    color: var(--on-surface);
+    outline: none;
+}
+
+/* Грид с бутони за докладване */
+.report-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 в ред */
+    gap: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.report-action-btn {
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: 16px;
+    padding: 16px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.1s, background-color 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    height: 100px;
+}
+
+.report-action-btn:active {
+    transform: scale(0.95);
+    background-color: var(--background);
+}
+
+.report-icon-large {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.report-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.2;
+}
+
+/* Цветове за видовете доклади */
+.btn-crash { color: #d32f2f; border-color: #ffcdd2; background: #ffebee; }
+.btn-police { color: #1976d2; border-color: #bbdefb; background: #e3f2fd; }
+.btn-hot { color: #f57c00; border-color: #ffe0b2; background: #fff3e0; }
+.btn-cold { color: #0288d1; border-color: #b3e5fc; background: #e1f5fe; }
+.btn-dirty { color: #5d4037; border-color: #d7ccc8; background: #efebe9; }
+
+/* Списък с активни доклади (Feed) */
+.social-feed-header {
+    padding: 0 16px 8px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--on-surface-variant);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--outline);
+}
+
+.report-feed-item {
+    background: var(--surface);
+    margin: 10px 16px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid var(--outline);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.report-feed-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 20px;
+    color: white;
+}
+
+.report-feed-content {
+    flex-grow: 1;
+}
+
+.report-feed-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--on-surface);
+}
+
+.report-feed-meta {
+    font-size: 12px;
+    color: var(--on-surface-variant);
+    margin-top: 4px;
+}
+
+/* Гласуване */
+.vote-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.vote-btn {
+    border: 1px solid var(--outline);
+    background: transparent;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--on-surface-variant);
+}
+
+.vote-btn.upvote.active { background: #e8f5e9; color: #2e7d32; border-color: #2e7d32; }
+.vote-btn.downvote.active { background: #ffebee; color: #c62828; border-color: #c62828; }
+
+.vote-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Маркери на картата (Инциденти) */
+.map-incident-marker {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+    
+    /* Тук е промяната: бавна анимация (3 секунди), безкрайна */
+    animation: pulse-soft 3s infinite ease-in-out;
+}
+
+
+.incident-police { background: #1976d2; color: white; }
+.incident-crash { background: #d32f2f; color: white; }
+
+/* Значки върху автобусите (Условия) */
+.vehicle-condition-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.badge-hot { background: #f57c00; color: white; }
+.badge-cold { background: #0288d1; color: white; }
+.badge-dirty { background: #5d4037; color: white; }
+
+/* MODAL ЗА ИЗБОР НА АВТОБУС */
+.vehicle-select-item {
+    padding: 12px;
+    border-bottom: 1px solid var(--outline);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+.vehicle-select-item:hover { background: var(--background); }
+
+/* LOCATION PICKER MAP CONTAINER */
+#location-picker-map {
+    width: 100%;
+    height: 300px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    position: relative;
+}
+
+.picker-center-marker {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -100%); /* Върхът на иглата е център */
+    color: #d32f2f;
+    font-size: 40px;
+    z-index: 1000;
+    pointer-events: none;
+    text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+/* --- SOCIAL FILTERS (TABS) --- */
+.social-filter-container {
+    display: flex;
+    padding: 0 16px 12px 16px;
+    gap: 10px;
+    border-bottom: 1px solid var(--outline);
+    background: var(--surface);
+    position: sticky;
+    top: 0; /* Залепва се, ако списъкът е дълъг */
+    z-index: 5;
+}
+
+.social-filter-tab {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--outline);
+    background: var(--background);
+    color: var(--on-surface-variant);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.social-filter-tab.active {
+    background-color: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.social-filter-tab:active {
+    transform: scale(0.96);
+}
+
+/* --- 2. МИНИМИЗИРАН LIVE WIDGET (НОВО) --- */
+#minimized-live-widget {
+    position: fixed;
+    /* Долу вляво, над навигацията */
+    bottom: calc(80px + var(--safe-bottom)); 
+    left: 16px;
+    
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 10px 16px;
+    
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    border: 2px solid transparent; /* За цвета на рамката */
+    
+    z-index: 6000; /* Над картата */
+    cursor: pointer;
+    transition: transform 0.2s;
+    
+    /* Анимация за мигане */
+    animation: livePulse 2s infinite;
+}
+
+#minimized-live-widget:active {
+    transform: scale(0.95);
+}
+
+.min-widget-eta {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--on-surface);
+    margin-bottom: 2px;
+}
+
+.min-widget-line {
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.min-widget-live-badge {
+    font-size: 10px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+
+/* Анимация за пулсиране (Сянка + Лек мащаб) */
+@keyframes livePulse {
+    0% { box-shadow: 0 0 0 0 rgba(28, 117, 188, 0.4); transform: scale(1); }
+    50% { box-shadow: 0 0 0 10px rgba(28, 117, 188, 0); transform: scale(1.02); }
+    100% { box-shadow: 0 0 0 0 rgba(28, 117, 188, 0); transform: scale(1); }
+}
+
+
+
+.feedback-type-opt {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid var(--outline);
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--on-surface-variant);
+    transition: 0.2s;
+}
+.feedback-type-opt.active {
+    border-color: var(--primary);
+    background-color: #e3f2fd;
+    color: var(--primary);
+    font-weight: bold;
+}
+.roadmap-item {
+    background: var(--surface);
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border: 1px solid var(--outline);
+}
+.roadmap-vote-btn {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    color: #555;
+    transition: 0.2s;
+}
+.roadmap-vote-btn.voted {
+    background: #e8f5e9;
+    border-color: #4CAF50;
+    color: #2E7D32;
+}
+
+.sort-chip {
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    color: var(--on-surface-variant);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: 0.2s;
+}
+.sort-chip .material-icons-round { font-size: 14px; }
+
+.sort-chip.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* --- MAINTENANCE MODE SCREEN --- */
+#social-maintenance-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 70vh; /* Центрирано вертикално */
+    text-align: center;
+    padding: 30px;
+    animation: fadeIn 0.5s;
+}
+
+.maintenance-icon-box {
+    background-color: #fff3e0;
+    color: #f57c00;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 10px rgba(245, 124, 0, 0.2);
+}
+
+.maintenance-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--on-surface);
+    margin-bottom: 10px;
+}
+
+.maintenance-desc {
+    font-size: 15px;
+    color: var(--on-surface-variant);
+    line-height: 1.5;
+    max-width: 300px;
+}/* --- MAINTENANCE MODE SCREEN --- */
+#social-maintenance-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 70vh; /* Центрирано вертикално */
+    text-align: center;
+    padding: 30px;
+    animation: fadeIn 0.5s;
+}
+
+.maintenance-icon-box {
+    background-color: #fff3e0;
+    color: #f57c00;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 10px rgba(245, 124, 0, 0.2);
+}
+
+.maintenance-title {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--on-surface);
+    margin-bottom: 10px;
+}
+
+.maintenance-desc {
+    font-size: 15px;
+    color: var(--on-surface-variant);
+    line-height: 1.5;
+    max-width: 300px;
+}
+
+/* --- FIX ЗА PNG ИКОНИ --- */
+img[src$=".png"] {
+    display: inline-block;
+    visibility: visible;
+}
+
+/* 1. В списъка (Feed) */
+.report-feed-icon img {
+    width: 24px !important;
+    height: 24px !important;
+    object-fit: contain;
+}
+
+/* 2. На картата (Значки върху автобуса) */
+.badge-icon-img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+    display: block;
+}
+
+/* 3. Големите бутони (Social Header) */
+.report-action-btn img {
+    width: 32px;
+    height: 32px;
+    display: block;
+    margin: 0 auto 8px auto;
+}
+
+/* --- ЯДРЕН ФИКС ЗА ВИДИМОСТ НА ЗНАЧКИТЕ (БЕЗ КРЪГЧЕТА) --- */
+
+/* 1. Разрешаваме стърчането */
+.leaflet-marker-icon,
+.vehicle-marker-container,
+.radar-vehicle-wrapper,
+.radar-vehicle-circle {
+    overflow: visible !important;
+}
+
+/* 2. Контейнерът на значката - вече е ПРОЗРАЧЕН */
+.vehicle-condition-badge {
+    position: absolute;
+    z-index: 500;
+    
+    /* МАХАМЕ ФОНА И РАМКИТЕ */
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 3. Самата картинка - УГОЛЕМЕНА и със сянка */
+.badge-icon-img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    display: block;
+    
+    /* Слагаме сянка на самата картинка, за да се чете върху картата */
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+    
+    /* Допълнително уголемяване */
+    transform: scale(1.3); 
+}
+
+/* --- DESKTOP VIEW FIX FOR SOCIAL SCREEN --- */
+@media (min-width: 768px) {
+    #screen-social {
+        /* Центриране в средата на екрана */
+        left: 50% !important;
+        right: auto !important;
+        transform: translateX(-50%);
+        
+        /* Ограничаване на ширината като телефон */
+        width: 100%;
+        max-width: 480px; 
+        
+        /* Добавяне на рамки и сянка за да изпъкне */
+        border-left: 1px solid var(--outline);
+        border-right: 1px solid var(--outline);
+        box-shadow: 0 0 30px rgba(0,0,0,0.1);
+        
+        /* За да не се губи под навигацията или хедъра */
+        height: 100vh;
+        z-index: 50; /* По-високо от картата */
+        background: var(--background);
+    }
+
+    /* Корекция на хедъра вътре в социалния екран */
+    #screen-social .screen-header {
+        max-width: 480px; /* Да не се разпъва */
+        margin: 0 auto;   /* Да се центрира */
+        border-radius: 0;
+    }
+}
+
+/* Корекция за размера на шрифта в малките бутони */
+.report-label {
+    font-size: 10px !important; /* Малко по-малък шрифт */
+    margin-top: 2px;
+}
+
+/* Добави това най-долу в style.css */
+@keyframes pulse-soft {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); } /* Увеличава се само с 10%, много леко */
+    100% { transform: scale(1); }
+}
+
+/* Компактни бутони за докладване */
+.report-compact-btn {
+    flex: 1;
+    border-radius: 10px;
+    padding: 8px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 11px;
+    gap: 4px;
+    transition: transform 0.1s;
+}
+.report-compact-btn:active {
+    transform: scale(0.95);
+}
+
+/* Иконата в хедъра (Когато вече е докладвано) */
+.modal-header-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+/* --- UNIVERSAL SWITCH ACTIVE STATE --- */
+/* Това позволява на всеки суич да свети, когато има клас .active, без значение от темата */
+
+.theme-switch.active {
+    background-color: var(--primary) !important;
+}
+
+.theme-switch.active .theme-switch-knob {
+    transform: translateX(20px) !important;
+}
+
+
+/* --- КОРИГИРАНИ СУИЧОВЕ (НЕЗАВИСИМИ) --- */
+
+/* 1. Основен стил (ИЗКЛЮЧЕНО) */
+.theme-switch {
+    width: 44px;
+    height: 24px;
+    background-color: #e0e0e0; /* Светло сиво за изключено */
+    border-radius: 12px;
+    position: relative;
+    transition: background-color 0.3s;
+}
+
+.theme-switch-knob {
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    transform: translateX(0); /* По подразбиране е вляво */
+}
+
+/* 2. Стил при ТЪМНА ТЕМА, но ИЗКЛЮЧЕН суич */
+/* Само правим фона по-тъмен сив, но НЕ местим топчето и не го правим син */
+body.dark-theme .theme-switch {
+    background-color: #555; 
+}
+
+/* 3. Стил при ВКЛЮЧЕНО СЪСТОЯНИЕ (.active) */
+/* Това важи и за двата бутона, независимо от темата */
+.theme-switch.active {
+    background-color: var(--primary) !important; /* Син (или цвета на темата) */
+}
+
+.theme-switch.active .theme-switch-knob {
+    transform: translateX(20px) !important; /* Местим вдясно */
+}
+
+
+/* --- DEVIATION STYLES (ОТКЛОНЕНИЕ) --- */
+
+/* 1. Значка върху автобуса (Долу Вляво) */
+.badge-deviation {
+    position: absolute;
+    bottom: -4px; 
+    left: -4px;
+    z-index: 600; /* Най-висок приоритет */
+    background-color: #fff; 
+    border-radius: 50%;
+    width: 18px; height: 18px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.badge-deviation .material-icons-round {
+    font-size: 16px;
+    color: #FFD600; /* Ярко жълто */
+}
+
+/* 2. Предупреждение в списъка (Arrival Item) */
+.arrival-deviation-warning {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 0 8px; margin-right: 4px;
+    cursor: pointer; text-align: center;
+    border-left: 1px solid rgba(255,255,255,0.2); 
+    min-width: 50px;
+}
+
+.arrival-deviation-text {
+    font-size: 9px; font-weight: 800; line-height: 1.1;
+    color: #FFD600; margin-top: 2px; text-transform: uppercase;
+}
+
+/* 3. Оранжевото каре в модала */
+.modal-deviation-box {
+    background-color: #FFF3E0; border: 1px solid #FFB74D;
+    border-radius: 12px; padding: 12px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px; cursor: pointer;
+}
+.deviation-title { font-size: 13px; font-weight: 800; color: #E65100; margin-bottom: 2px; text-transform: uppercase; }
+.deviation-desc { font-size: 12px; color: #333; line-height: 1.3; }
+
+/* 4. Червената линия */
+.deviation-path-line {
+    stroke-dasharray: 12, 12;
+    animation: dash-move 40s linear infinite;
+}
+@keyframes dash-move { to { stroke-dashoffset: -1000; } }
+
+
+/* --- SOCIAL MENU BUTTONS (Help & Info) --- */
+.social-menu-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.menu-card-btn {
+    flex: 1;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 13px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 1px solid;
+    transition: transform 0.1s;
+}
+
+.menu-card-btn:active { transform: scale(0.96); }
+
+/* Цветове за бутоните */
+.btn-support {
+    background-color: rgba(0, 121, 107, 0.1); /* Teal tint */
+    color: #00796B;
+    border-color: rgba(0, 121, 107, 0.3);
+}
+.btn-community {
+    background-color: rgba(25, 118, 210, 0.1); /* Blue tint */
+    color: #1976D2;
+    border-color: rgba(25, 118, 210, 0.3);
+}
+
+/* Тъмна тема */
+body.dark-theme .btn-support { background-color: rgba(0, 121, 107, 0.2); }
+body.dark-theme .btn-community { background-color: rgba(25, 118, 210, 0.2); }
+
+
+/* --- CHAT UI (Sent Tab) --- */
+.sent-item-card {
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.sent-card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-top: 8px;
+    border-top: 1px solid var(--outline);
+}
+
+.chat-row { display: flex; width: 100%; }
+.chat-left { justify-content: flex-start; }
+.chat-right { justify-content: flex-end; }
+
+.chat-bubble {
+    max-width: 85%;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    position: relative;
+}
+
+.bubble-admin {
+    background-color: #E3F2FD; /* Light Blue */
+    color: #000;
+    border-bottom-left-radius: 0;
+}
+
+.bubble-user {
+    background-color: #F1F8E9; /* Light Green */
+    color: #000;
+    border-bottom-right-radius: 0;
+}
+
+.chat-label {
+    font-size: 9px;
+    font-weight: 800;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+}
+.bubble-admin .chat-label { color: #1565C0; }
+.bubble-user .chat-label { color: #2E7D32; }
+
+/* Reply Input */
+.reply-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.reply-input {
+    flex: 1;
+    border: 1px solid var(--outline);
+    border-radius: 20px;
+    padding: 8px 12px;
+    font-size: 13px;
+    outline: none;
+    background: var(--background);
+    color: var(--on-surface);
+}
+.reply-send-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+}
+
+/* --- NOTIFICATION BADGE --- */
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    
+    min-width: 18px;
+    height: 18px;
+    
+    background-color: #ff3b30; /* Messenger Red */
+    color: white;
+    border: 2px solid white;   /* Бял кант за контраст */
+    border-radius: 50%;
+    
+    font-size: 10px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    z-index: 100;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    
+    /* Анимация за пулсиране */
+    animation: badge-pulse 2s infinite;
+}
+
+.notification-badge.hidden {
+    display: none !important;
+}
+
+@keyframes badge-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+/* Корекция за позицията в Навигацията (Bottom Bar) */
+.nav-item .icon-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+/* Корекция за позицията в Табовете (Roadmap) */
+.roadmap-tab .tab-content-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* --- ROADMAP TABS (ANDROID STYLE: VERTICAL) --- */
+
+.roadmap-tab {
+    flex: 1; /* Равно разпределение */
+    display: flex;
+    flex-direction: column; /* Икона над Текст */
+    align-items: center;
+    justify-content: center;
+    
+    padding: 10px 4px; /* Малко падинг, за да не е сбито вертикално */
+    cursor: pointer;
+    
+    color: var(--on-surface-variant);
+    border-bottom: 3px solid transparent; /* Линията отдолу */
+    transition: all 0.2s;
+    background: transparent;
+}
+
+.roadmap-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: rgba(28, 117, 188, 0.05); /* Лек фон при активност */
+}
+
+.roadmap-tab .material-icons-round {
+    font-size: 24px;
+    margin-bottom: 2px; /* Разстояние до текста */
+}
+
+/* Текстът на таба */
+.roadmap-tab-label {
+    font-size: 11px; /* По-малък шрифт, за да се събира */
+    font-weight: 700;
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1.1;
+    white-space: nowrap; /* Да не пренася на нов ред, ако може */
+}
+
+/* При много малки екрани, намаляваме още малко */
+@media (max-width: 340px) {
+    .roadmap-tab-label {
+        font-size: 10px;
+    }
+}
+
+/* Wrapper за баджа, за да стои върху иконата */
+.tab-content-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+
+
+
+
+/* За да не "захапва" бутоните при нови телефони с голям safe area */
+@media screen and (max-width: 480px) {
+    .map-floating-buttons {
+        right: 12px; /* Малко по-навътре */
+    }
+}
+
+/* Когато е отворен Ride Along, махаме автоматичното изчисление на bottom */
+#screen-ride-along.active ~ .map-floating-buttons {
+    /* JavaScript ще контролира това, но за всеки случай: */
+    bottom: 50vh; 
+}
+
+/* Самите бутони вътре */
+.fab-static, .fab-extended-static {
+    pointer-events: auto; /* Бутоните обаче са активни */
+    background: var(--surface);
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--primary);
+    transition: transform 0.1s;
+}
+
+.fab-static {
+    width: 56px;
+    height: 56px;
+}
+
+
+
+
+
+
+
+.fab-static:active, .fab-extended-static:active {
+    transform: scale(0.95);
+}
+
+/* Когато бутонът за радар е активен */
+#btn-live-radar.active, #btn-traffic.active {
+    background-color: var(--primary);
+    color: white;
+}
+
+
+/* Добави тези трите, за да са сигурни */
+#bottom-sheet, #routes-sheet, #screen-ride-along {
+    touch-action: none !important;
+}
+
+/* Добави това в style.css за по-добър акцент на бутона */
+#btn-share-live {
+    background-color: rgba(28, 117, 188, 0.1); /* Прозрачен син фон */
+    transition: background-color 0.3s ease;
+}
+
+#btn-share-live:active {
+    background-color: var(--primary);
+    color: white !important;
+}
+
+body.dark-theme #btn-share-live {
+    background-color: rgba(100, 181, 246, 0.15);
+}
+
+/* ALARM WIZARD STYLES */
+/* ALARM WIZARD STYLES */
+.active-alarm-badge {
+    background: var(--background); /* Промяна */
+    color: var(--on-surface);      /* Промяна */
+    padding: 10px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    border: 1px solid var(--outline);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.alarm-line-card {
+    padding: 12px;
+    border-bottom: 1px solid var(--outline);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    color: var(--on-surface); /* Промяна */
+}
+.alarm-line-card:hover { background-color: var(--background); }
+
+.alarm-step-label {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    display: block;
+    color: var(--on-surface); /* Промяна */
+}
+
+.alarm-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--outline);
+    border-radius: 8px;
+    font-size: 18px;
+    background: var(--background); /* Промяна */
+    color: var(--on-surface);      /* Промяна */
+    outline: none;
+    margin-bottom: 8px;
+}
+
+.alarm-option-btn {
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 10px;
+    border: 1px solid var(--outline);
+    border-radius: 12px;
+    background: var(--surface);    /* Промяна */
+    color: var(--on-surface);      /* Промяна */
+    font-weight: 600;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+.alarm-option-btn span { margin-right: 12px; color: var(--primary); }
+
+.alarm-time-chip {
+    display: inline-block;
+    padding: 8px 16px;
+    margin: 4px;
+    background: var(--background);
+    color: var(--on-surface);      /* Промяна */
+    border: 1px solid var(--outline);
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.alarm-time-chip.gps {
+    border-color: #2E7D32;
+    color: #2E7D32; /* Зеленото остава за GPS */
+    background: #E8F5E9;
+}
+/* В тъмна тема GPS чипът да не е твърде ярък */
+body.dark-theme .alarm-time-chip.gps {
+    background: #1B5E20;
+    color: #A5D6A7;
+    border-color: #2E7D32;
+}
+
+/* ALARM UI STYLES (Settings List) */
+.active-alarm-card {
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    color: var(--on-surface); /* Промяна */
+}
+
+.alarm-info-col { flex: 1; }
+.alarm-actions-col { display: flex; gap: 8px; }
+.time-grid-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.time-choice-btn {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--outline);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--on-surface);
+    font-weight: 600;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+}
+.time-choice-btn.gps {
+    border-color: #2E7D32;
+    color: #2E7D32;
+    background: #E8F5E9;
+}
+body.dark-theme .time-choice-btn.gps {
+    background: #1B5E20;
+    color: #A5D6A7;
+    border-color: #2E7D32;
+}
+
+
+/* --- PHOTON SEARCH FIX --- */
+
+/* 1. Скриваме старата Google търсачка, ако се появява */
+.pac-container {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* 2. Стилове за новите резултати от Photon */
+#photon-results-main {
+    position: absolute;
+    top: 60px; /* Малко под полето */
+    left: 16px;
+    right: 16px;
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    z-index: 5000 !important; /* Над всичко */
+    max-height: 280px;
+    overflow-y: auto;
+    display: none; /* Скрито по подразбиране */
+    border: 1px solid var(--outline);
+    
+    /* ВАЖНО: Правим го кликаемо! */
+    pointer-events: auto !important;
+}
+
+/* Елемент от резултатите */
+.photon-item {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    transition: background 0.2s;
+}
+
+.photon-item:hover {
+    background-color: var(--background);
+}
+
+.photon-item:last-child {
+    border-bottom: none;
+}
+
+/* Тъмна тема */
+body.dark-theme #photon-results-main {
+    background-color: #1e1e1e;
+    border-color: #444;
+}
+body.dark-theme .photon-item:hover {
+    background-color: #2c2c2e;
+}
+
+/* Стилове за падащите менюта в настройките */
+.settings-subgroup {
+    background-color: var(--background); /* Малко по-различен фон */
+    border-top: 1px solid var(--outline);
+    display: none; /* Скрито по подразбиране */
+    padding-left: 10px; /* Леко отместване навътре */
+}
+
+.settings-subgroup.open {
+    display: block;
+    animation: slideDown 0.3s ease-out;
+}
+
+/* Анимация за стрелката */
+.arrow-rotated {
+    transform: rotate(180deg);
+    transition: transform 0.3s;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.backup-action-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 0;
+    cursor: pointer;
+    border-bottom: 1px solid var(--outline);
+}
+.backup-action-item:last-of-type {
+    border-bottom: none;
+    margin-bottom: 10px;
+}
+.backup-action-item:active {
+    background-color: rgba(0,0,0,0.05);
+}
+.backup-action-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--on-surface);
+    margin-bottom: 4px;
+}
+.backup-action-desc {
+    font-size: 12px;
+    color: var(--on-surface-variant);
+}
+
+#routes-sheet {
+    transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    height: 50vh; /* Начална височина */
+    max-height: 100dvh;
+    bottom: 0;
+    /* Важно: премахваме translateY от класа sheet-minimized, ако съществува */
+    transform: translateY(0) !important; 
+}
+
+#routes-sheet.hidden {
+    transform: translateY(110%) !important;
+}
+
+#routes-details-content {
+    overflow-y: auto !important;
+    flex: 1;
+}
+
+/* Стил за стъпките в маршрута */
+.route-step-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    align-items: flex-start;
+}
+
+.icon-btn-small:active {
+    filter: brightness(0.8);
+    transform: scale(0.95);
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+    .route-panel-container {
+        max-width: 400px;
+        left: 90px; /* Да не застъпва страничното меню */
+    }
+}
+
+
+/* --- НОВ ДИЗАЙН: ПРЕВОЗНО СРЕДСТВО КАТО КАПКА (ANDROID STYLE) --- */
+
+.vehicle-teardrop-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    position: relative;
+    /* Контейнерът ще се върти според посоката (bearing) */
+    transition: transform 0.5s linear; 
+}
+
+
+
+
+
+
+/* Балончето с времето над капката */
+.teardrop-time-bubble {
+    position: absolute;
+    bottom: 42px; /* Над върха на капката */
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    color: #222;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 800;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    white-space: nowrap;
+    z-index: 10;
+}
+
+.vehicle-teardrop-container, .vehicle-teardrop-shape, .vehicle-teardrop-label {
+    transform-origin: center center;
+}
+
+/* --- ФИНАЛНА КОРЕКЦИЯ НА КАПКАТА --- */
+.vehicle-teardrop-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    position: relative;
+    transform-origin: center center;
+    transition: transform 0.5s linear;
+}
+
+.vehicle-teardrop-shape {
+    width: 26px; /* Намален размер */
+    height: 26px; /* Намален размер */
+    border-radius: 50% 50% 50% 0; /* Форма на капка */
+    /* Важно: 135 градуса я кара да сочи точно нагоре (Север) */
+    transform: rotate(135deg); 
+    background-color: var(--primary);
+    border: 2px solid white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform-origin: center center;
+}
+
+.vehicle-teardrop-label {
+    color: white;
+    font-size: 10px; /* По-малък номер */
+    font-weight: 900;
+    text-align: center;
+    letter-spacing: -0.5px;
+    width: 26px;
+    display: block;
+    /* Изправяме текста спрямо ротацията на капката (135) */
+    transform: rotate(-135deg); 
+    transform-origin: center center;
+    white-space: nowrap;
+}
+
+/* Когато няма данни за посока (bearing 0), става перфектно кръгче */
+.vehicle-teardrop-container.no-direction .vehicle-teardrop-shape {
+    border-radius: 50% !important;
+    transform: rotate(0deg) !important;
+}
+.vehicle-teardrop-container.no-direction .vehicle-teardrop-label {
+    transform: rotate(0deg) !important;
+}
+
+.vehicle-teardrop-container, .vehicle-teardrop-shape, .vehicle-teardrop-label {
+    transform-origin: center center;
+}
+
+/* Добавете това в style.css */
+.vehicle-marker-container {
+    transition: transform 0.2s ease-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.map-marker-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease-out;
+}
+
+/* Корекция за слайдерите вътре в настройките */
+.settings-item .zoom-slider-container {
+    width: 100%;
+    padding: 0; /* Махаме вътрешния падинг, защото settings-item го има */
+    background: transparent; /* Интегрира се в картата на настройките */
+}
+
+.settings-item .slider-header-row {
+    margin-bottom: 5px;
+}
+
+/* FAVORITE PLACES CHIPS */
+#favorite-places-bar::-webkit-scrollbar { display: none; }
+
+.place-chip {
+    background: var(--surface);
+    border: 1px solid var(--outline);
+    border-radius: 20px;
+    padding: 6px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    pointer-events: auto;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.place-chip:active {
+    transform: scale(0.92);
+    background: var(--background);
+}
+
+.place-chip span {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--on-surface);
+}
+
+.place-chip .material-icons-round {
+    font-size: 18px;
+    color: var(--primary);
+}
+
+/* Корекция за модала */
+.icon-btn-square .material-icons-round {
+    color: var(--on-surface-variant);
+}
+
+
+
+.map-floating-buttons {
+    position: absolute;
+    right: 16px; /* Разстояние от десния ръб */
+    bottom: calc(80px + var(--safe-bottom)); 
+    display: flex;
+    flex-direction: column;
+    /* ТОВА Е КЛЮЧОВИЯТ РЕД: */
+    align-items: flex-end; 
+    gap: 12px;
+    z-index: 1000;
+    transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+}
+
+.fab-extended-static {
+    height: 56px;
+    padding: 0 20px;
+    gap: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    background: var(--surface);
+    color: var(--primary);
+    border-radius: 16px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+
+    /* ДОБАВИ ТЕЗИ РЕДОВЕ: */
+    width: fit-content;
+    min-width: 56px;
+    white-space: nowrap; /* Предотвратява пренасянето на текста */
+}
+
+.fab-static {
+    width: 56px;
+    height: 56px;
+    min-width: 56px; /* Фиксирана ширина */
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    color: var(--primary);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    border: none;
+    pointer-events: auto;
+}
+
+.line-square-badge {
+    display: inline-block;
+    min-width: 32px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: white;
+    font-weight: 900;
+    font-size: 11px;
+    text-align: center;
+    margin: 2px;
+}
+.badge-bus { background-color: #BD202E; }
+.badge-tram { background-color: #F7941D; }
+.badge-trolley { background-color: #2AA9E0; }
+.badge-other { background-color: #888888; }
+
+.change-card {
+    background: white;
+    margin: 8px 12px;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: 0.2s;
+}
+.change-card:active { transform: scale(0.98); background: #fafafa; }
+
+/* КЛАС ЗА ПЛАВНО ДВИЖЕНИЕ (Leaflet) */
+.radar-smooth-icon {
+    transition: transform 0.3s linear, left 0.3s linear, top 0.3s linear;
+}
+
+/* --- СТИЛ: КАПКА (TEARDROP) --- */
+
+/* --- СТИЛ: КАПСУЛА (CAPSULE) --- */
+.capsule-wrapper {
+    display: flex; align-items: center;
+    background: white; border-radius: 12px;
+    padding: 2px 8px; border: 2px solid;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    white-space: nowrap; height: 24px;
+}
+.capsule-arrow {
+    width: 0; height: 0;
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-bottom: 8px solid; /* Цветна стрелка */
+    margin-right: 5px;
+}
+.capsule-icon {
+    font-size: 14px !important; margin-right: 4px;
+}
+.capsule-label {
+    font-size: 13px; font-weight: 800; color: #222;
+}
+
+/* Универсален контейнер за мащабиране */
+.veh-scale-node {
+    transform-origin: center center;
+    display: flex; align-items: center; justify-content: center;
+}
+
+/* Компактен избор на стил в Настройки */
+.vehicle-style-row {
+    display: flex;
+    background: var(--background);
+    padding: 4px;
+    border-radius: 12px;
+    gap: 4px;
+}
+
+.style-select-btn {
+    flex: 1;
+    height: 40px; /* Много по-ниски */
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0.6;
+    padding: 0 10px;
+}
+
+.style-select-btn.active {
+    background: var(--surface);
+    opacity: 1;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.style-preview-canvas {
+    width: 24px !important; /* Малки иконки в менюто */
+    height: 24px !important;
+}
+
+.style-btn-label {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* --- СТИЛ: КАПСУЛА (CAPSULE) - 1:1 ANDROID --- */
+.capsule-wrapper {
+    display: flex; align-items: center;
+    border-radius: 12px;
+    padding: 0 10px; 
+    border: 1.5px solid white; /* Бял кант за контраст */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+    white-space: nowrap; height: 26px;
+    color: white; /* Цялото съдържание е бяло */
+}
+
+.capsule-arrow {
+    width: 0; height: 0;
+    /* Правим стрелката по-остра: тясна основа и голяма височина */
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 10px solid white; 
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.capsule-icon {
+    font-size: 16px !important; 
+    margin-right: 5px;
+    color: white !important;
+}
+
+.capsule-label {
+    font-size: 14px; 
+    font-weight: 900; 
+    color: white !important;
+    font-family: 'Roboto', sans-serif;
+}
+
+/* --- СТИЛ: КАПСУЛА (CAPSULE) - 1:1 СЪС СКРИЙНШОТА --- */
+.capsule-wrapper {
+    display: flex; align-items: center;
+    border-radius: 12px;
+    padding: 0 8px; 
+    border: none; /* ПРЕМАХНАТ КАНТ */
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+    white-space: nowrap; height: 26px;
+    color: white;
+}
+
+.capsule-arrow {
+    width: 14px; height: 14px;
+    background-color: white;
+    /* ТОВА СЪЗДАВА ОСТРАТА "САМОЛЕТНА" СТРЕЛКА */
+    clip-path: polygon(50% 0%, 0% 100%, 50% 80%, 100% 100%);
+    margin-right: 6px;
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+}
+
+.capsule-icon {
+    font-size: 16px !important; 
+    margin-right: 5px;
+    color: white !important;
+}
+
+.capsule-label {
+    font-size: 14px; 
+    font-weight: 900; 
+    color: white !important;
+}
+
+#news-image-container {
+    width: 100%;
+    height: 300px;
+    background: #000;
+    position: relative;
+    overflow: hidden; /* Важно: за да не излиза снимката извън контейнера при зуум */
+    display: none;
+}
+
+#news-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    touch-action: none; /* Спира системния скрол на браузъра върху снимката */
+    user-select: none;
+    -webkit-user-drag: none;
+    transform-origin: center; /* Зуумът тръгва от центъра */
+    will-change: transform;
+}
+
+/* Остра стрелка за Капсула (тип самолетче) */
+.capsule-arrow {
+    width: 13px; height: 13px;
+    background-color: white;
+    clip-path: polygon(50% 0%, 0% 100%, 50% 80%, 100% 100%);
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+/* Стил за превю бутоните в настройките */
+.style-select-btn {
+    flex: 1;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--background);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.style-select-btn.active {
+    background: var(--surface);
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.map-floating-buttons {
+    position: absolute;
+    right: 16px;
+    bottom: calc(80px + var(--safe-bottom)); 
+    display: flex;
+    flex-direction: column;
+    /* ПРОМЕНИ САМО ТОВА НА: flex-end */
+    align-items: flex-end; 
+    gap: 12px;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+/* Контейнерът за любими места */
+
+/* Контейнерът за активни линии (маршрути) */
+
+/* Скриваме скролбаровете за по-чист вид */
+#favorite-places-bar::-webkit-scrollbar, 
+.routes-container::-webkit-scrollbar { 
+    display: none; 
+}
+
+
+/* 1. Махаме старите позиции на контейнерите, защото вече са в СТЕК */
+
+
+/* 2. МАГИЯТА: Ако панелът за маршрути е отворен, целият стек с хапчетата пада надолу */
+#route-panel:not(.hidden) ~ #map-chips-stack {
+    top: calc(155px + var(--safe-top)) !important;
+    transition: top 0.3s ease;
+}
+
+/* 3. Плавен преход, когато се появяват/изчезват */
+#map-chips-stack {
+    transition: top 0.3s ease;
+}
+
+.icon-btn {
+    pointer-events: auto !important;
+    cursor: pointer;
+    z-index: 2010; /* Да е над всичко останало в контейнера */
+}
+
+
+/* --- ПАНЕЛ ЗА МАРШРУТИ (ROUTE PANEL) --- */
+.route-panel-container {
+    background: var(--surface); /* Плътен фон (бял/тъмен) */
+    border-radius: 16px;
+    padding: 16px; /* Вътрешно отстояние, за да не са залепени бутоните */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2); /* Сянка, за да изпъкне над картата */
+    
+    display: flex;
+    flex-direction: column;
+    gap: 12px; /* Разстояние между полетата и бутоните */
+    
+    z-index: 2010; /* По-високо от любимите места */
+    pointer-events: auto;
+}
+
+/* Редът с бутоните (Отказ / Виж) */
+.route-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--outline); /* Тънка черта за отделяне */
+}
+
+/* --- FIX: Местене на чиповете под панела за маршрути --- */
+#map-top-controls-wrapper {
+    transition: top 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+#map-top-controls-wrapper.pushed-down {
+    /* ПРОМЯНА: Увеличаваме на 240px, за да слезе под целия панел */
+    top: calc(200px + var(--safe-top)) !important; 
+    
+    pointer-events: none; 
+    z-index: 1000; /* Гарантираме, че е под модалите, но над картата */
+}
+
+/* Връщаме кликането за самите бутони */
+#map-top-controls-wrapper.pushed-down > * {
+    pointer-events: auto;
+}
+
+
+
+/* --- СТИЛ: КАПКА (TEARDROP) - ВЪЗСТАНОВЕНА ВЕРСИЯ --- */
+.teardrop-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    position: relative;
+    transition: transform 0.3s linear;
+}
+
+.teardrop-shape {
+    width: 30px; 
+    height: 30px;
+    /* Класическа форма на пин */
+    border-radius: 50% 50% 50% 0;
+    /* Тази ротация сочи точно по посока на движението при 0 градуса */
+    transform: rotate(135deg); 
+    /* Дебел бял кант от скрийншота */
+    border: 3px solid white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+}
+
+.teardrop-label {
+    color: white; 
+    font-size: 11px; 
+    font-weight: 900;
+    /* Изправяме текста спрямо формата */
+    transform: rotate(-135deg); 
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.vehicle-time-bubble {
+    bottom: 48px !important; 
+}
+
+
+/* --- СТИЛ: КАПСУЛА (CAPSULE) - СЪС СТРЕЛКА С ОПАШКА --- */
+.capsule-wrapper {
+    display: flex; 
+    align-items: center;
+    border: none; /* Без кант, както поиска */
+    border-radius: 12px;
+    padding: 0 10px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+    white-space: nowrap; 
+    height: 26px; 
+    color: white;
+}
+
+/* Остра стрелка с опашка (тип хартиено самолетче / stealth) */
+.capsule-arrow {
+    width: 13px; 
+    height: 13px;
+    background-color: white;
+    /* ТОВА СЪЗДАВА ОСТРАТА ФОРМА С ОПАШКА */
+    clip-path: polygon(50% 0%, 0% 100%, 50% 80%, 100% 100%);
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.capsule-icon {
+    font-size: 16px !important; 
+    margin-right: 5px;
+    color: white !important;
+}
+
+.capsule-label {
+    font-size: 14px; 
+    font-weight: 900; 
+    color: white !important;
+}
+
+/* --- BOTTOM SHEET (ОБНОВЕНО) --- */
+.bottom-sheet {
+    position: fixed; 
+    bottom: 0; 
+    left: 0; 
+    right: 0; 
+    margin: 0 auto; 
+    width: 100%; 
+    max-width: 480px;
+    background: var(--surface); 
+    border-radius: 28px 28px 0 0; 
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+    z-index: 6000; 
+    /* Първоначална височина - може да се променя от JS, но max-height ограничава */
+    max-height: 85vh; 
+    display: flex; 
+    flex-direction: column;
+    
+    /* ВАЖНО: Smooth snapping animation */
+    transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+    transform: translateY(0);
+    
+    /* Оптимизация за производителност */
+    will-change: transform;
+}
+
+/* Когато е скрит - отива надолу */
+.bottom-sheet.hidden { 
+    transform: translateY(100%) !important; 
+    box-shadow: none !important; 
+}
+
+/* ВАЖНО: Докато влачим с пръст, спираме анимацията, за да е мигновено */
+.bottom-sheet.dragging { 
+    transition: none !important; 
+}
+
+/* Зоната за хващане */
+.sheet-header-area { 
+    padding-bottom: 8px; 
+    cursor: grab; 
+    background: var(--surface); 
+    border-radius: 28px 28px 0 0; 
+    
+    /* СПИРА скрола на браузъра, когато пипаш тук */
+    touch-action: none; 
+}
+
+/* По време на влачене курсорът се променя */
+.sheet-header-area:active {
+    cursor: grabbing;
+}
+
+
+
+
+
+
+
+
+
+/* --- ОБНОВЕНИ СТИЛОВЕ ЗА ПАНЕЛИТЕ --- */
+
+/* Общ клас за спиране на анимацията при влачене */
+.bottom-sheet.dragging,
+#routes-sheet.dragging,
+#screen-ride-along.dragging {
+    transition: none !important;
+}
+
+/* 1. RIDE ALONG (Проследяване на живо) */
+#screen-ride-along.ride-along-sheet {
+    /* Добавяме транзиция за височината */
+    transition: height 0.4s cubic-bezier(0.2, 0.9, 0.3, 1), transform 0.3s ease;
+    will-change: height, transform;
+}
+
+/* 2. ROUTES SHEET (Маршрути) */
+#routes-sheet {
+    /* Транзиция за височината - за snapping ефекта */
+    transition: height 0.4s cubic-bezier(0.2, 0.9, 0.3, 1), transform 0.3s ease;
+    will-change: height;
+    
+    /* Минимална височина, за да не се скрива напълно */
+    min-height: 90px; 
+    bottom: 0;
+    max-height: 100dvh;
+}
+
+/* Уверяваме се, че дръжките не скролват страницата */
+#ra-drag-zone, #routes-drag-zone {
+    touch-action: none;
+    cursor: grab;
+}
+#ra-drag-zone:active, #routes-drag-zone:active {
+    cursor: grabbing;
+}
+
+
+/* --- ПРЕВРЪЩАНЕ НА LINE MODAL В BOTTOM SHEET --- */
+
+/* 1. Позициониране долу */
+#line-modal {
+    align-items: flex-end; /* Това кара модала да "падне" на дъното */
+    padding: 0; /* Махаме падинга на контейнера */
+}
+
+/* 2. Оформяне на прозореца */
+#line-modal .modal-content {
+    width: 100%;
+    max-width: 480px; /* Ограничение за десктоп */
+    border-radius: 28px 28px 0 0; /* Заобляне само горе */
+    margin: 0 auto; /* Центриране хоризонтално */
+    
+    /* Анимация за плавно излизане отдолу */
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+    
+    /* Важно за мобилни */
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+}
+
+/* 3. Активно състояние */
+#line-modal.active .modal-content {
+    transform: translateY(0);
+}
+
+/* 4. При влачене - спираме анимацията */
+#line-modal.dragging .modal-content {
+    transition: none !important;
+}
+
+/* 5. Хедър зоната (Дръжката) */
+#line-modal-drag-handle {
+    width: 100%;
+    padding-bottom: 10px; /* Място за пръста */
+    cursor: grab;
+    touch-action: none; /* Спира скрола на бодито */
+    background: var(--surface); /* Цвета на фона */
+}
+
+
+/* --- COMPACT ROUTE PLANNER & HIDE FAVORITES --- */
+
+/* 1. Когато панелът за маршрути е отворен (.pushed-down), СКРИВАМЕ любимите места */
+#map-top-controls-wrapper.pushed-down #favorite-places-container {
+    display: none !important;
+}
+
+/* 2. Коригираме позицията на стека, защото любимите ги няма */
+/* Преди го бутахме на 240px, сега го вдигаме на 170px (веднага под панела за маршрути) */
+#map-top-controls-wrapper.pushed-down {
+    top: calc(170px + var(--safe-top)) !important;
+}
+
+/* 3. Правим самия панел за маршрути (From/To) по-компактен */
+.route-panel-container {
+    padding: 12px 12px 8px 12px !important; /* По-малко въздух */
+    gap: 6px !important; /* По-малко разстояние между полетата */
+}
+
+/* Намаляваме височината на полетата за писане */
+.route-row {
+    height: 42px !important; /* Беше по-голямо */
+    min-height: 42px !important;
+}
+
+/* Намаляваме текста вътре */
+.route-input {
+    font-size: 14px !important;
+}
+
+/* Коригираме "триточието" между двете полета да пасва на новия размер */
+.route-dots-connector {
+    top: 35px !important;
+    height: 22px !important;
+    left: 23px !important; /* Центрираме спрямо иконите */
+}
+
+/* Компактни бутони долу (Отказ / Виж) */
+.route-actions-row {
+    margin-top: 2px !important;
+    padding-top: 4px !important;
+}
+
+.route-action-btn {
+    height: 32px !important;
+    font-size: 13px !important;
+    padding: 0 16px !important;
+}
+
+
+/* --- ПО-КОМПАКТНИ КОНТРОЛИ ГОРЕ --- */
+
+/* 1. Намаляваме разстоянието между редовете (Търсачка / Любими / Линии) */
+#map-top-controls-wrapper {
+    gap: 4px !important; /* Беше 8px - свиваме го наполовина */
+}
+
+/* 2. Махаме излишния въздух около лентата с любими места (+ Добави) */
+#favorite-places-bar {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    min-height: 32px; /* Фиксирана височина, за да не се смачква */
+    display: flex;
+    align-items: center; /* Центриране вертикално */
+}
+
+/* 3. Правим самите хапчета за любими места малко по-ниски и компактни */
+.place-chip {
+    padding: 4px 10px !important; /* Намален падинг */
+    height: 32px !important;      /* Фиксирана по-малка височина */
+    font-size: 12px !important;
+}
+
+/* 4. Ако и активната линия (310) ти се струва голяма, свиваме и нея леко */
+.route-chip {
+    padding: 4px 10px !important;
+    height: 32px !important; /* Изравняваме я с горните */
+}
+
+.chip-text {
+    font-size: 13px !important;
+}
+
+/* Добави това към съществуващия клас .place-chip */
+.place-chip {
+    -webkit-user-select: none;   /* Забранява маркирането */
+    user-select: none;
+    -webkit-touch-callout: none; /* Забранява системното меню на iOS */
+    touch-action: manipulation;  /* Оптимизира за докосване */
+}
+
+
+/* Фикс за падащото меню на филтъра */
+#filter-search-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    margin-top: 6px;
+    z-index: 1000;
+    max-height: 250px;
+    overflow-y: auto;
+    overflow-x: hidden; /* Спира хоризонталния скрол от скрийншота ти */
+    border: 1px solid var(--outline);
+    display: none;
+}
+
+/* Фикс за подравняването на елементите в търсенето */
+.filter-search-item {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center; /* Центрира иконата и текста вертикално */
+    justify-content: flex-start; /* Всичко започва отляво */
+    gap: 12px; /* Равно разстояние между икона и текст */
+    cursor: pointer;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    width: 100%;
+}
+
+.filter-search-item:hover {
+    background-color: var(--background);
+}
+
+/* Контейнер за иконата, за да е винаги фиксирана */
+.filter-search-item .item-icon-wrap {
+    width: 24px;
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Текстът на линията */
+.filter-search-item .item-text-wrap {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+
+/* По-малки хапчета за избрани линии във филтъра */
+.line-filter-chip {
+    display: flex;
+    align-items: center;
+    padding: 4px 10px; /* Намален падинг */
+    border-radius: 16px;
+    font-size: 12px; /* По-малък шрифт */
+    font-weight: 700;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.1s;
+    height: 28px; /* Фиксирана малка височина */
+}
+
+.line-filter-chip .material-icons-round {
+    font-size: 16px !important; /* По-малка икона */
+    margin-right: 4px;
+}
+
+.line-filter-chip .remove-icon {
+    font-size: 14px !important;
+    margin-left: 4px;
+    opacity: 0.8;
+}
+
+/* Когато няма посока или возилото е спряло, става перфектно кръгче */
+.teardrop-shape.no-direction {
+    border-radius: 50% !important; /* Превръща капката в кръгче */
+    transform: rotate(0deg) !important; /* Маха ротацията */
+}
+
+/* Изправяме текста вътре в кръгчето */
+.teardrop-shape.no-direction .teardrop-label {
+    transform: rotate(0deg) !important;
+}
+
+.style-selector-row {
+    display: flex;
+    background: #1a1a1c; /* Тъмен фон като на снимката */
+    padding: 4px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+}
+
+.style-option {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 700;
+    color: #a0a0a0;
+    transition: all 0.2s;
+}
+
+.style-option.active {
+    background: #2c2c2e; /* Малко по-светло сиво за активния бутон */
+    color: #ffffff;
+}
+
+.style-option .material-icons-round {
+    font-size: 20px;
+}
+
+/* Контейнерът за избор на стил - по-малък и адаптиран за теми */
+.style-selector-row {
+    display: flex;
+    background: var(--background); /* Ползва сивия фон на темата */
+    padding: 3px; /* Намален падинг за компактност */
+    border-radius: 10px;
+    margin-bottom: 12px;
+    border: 1px solid var(--outline); /* Тънка рамка за дефиниция */
+}
+
+.style-option {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px; /* Намалено разстояние между икона и текст */
+    padding: 6px 4px; /* Намалена височина на бутоните */
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    
+    /* Текст и икона */
+    font-size: 13px; /* По-малък шрифт */
+    font-weight: 600;
+    color: var(--on-surface-variant);
+}
+
+.style-option .material-icons-round {
+    font-size: 18px !important; /* По-малка икона */
+}
+
+/* Активно състояние - Адаптивно за Тъмна/Светла тема */
+.style-option.active {
+    background: var(--surface); /* Изпъква върху background */
+    color: var(--primary);      /* Син цвят за акцент */
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* Ефект при натискане */
+.style-option:active {
+    transform: scale(0.97);
+}
+
+/* Тъмна тема специфично (ако е нужно допълнително потъмняване) */
+body.dark-theme .style-option.active {
+    background: #2c2c2e; /* Малко по-светло сиво от основния фон */
+    color: var(--primary);
+}
+
+/* --- ПАРКИНГ ЦВЕТОВЕ ЗА ТЕМИ --- */
+:root {
+    --parking-card-bg: #ffffff;
+    --parking-chip-border: #eeeeee;
+    --parking-text: #1a1a1a;
+}
+body.dark-theme {
+    --parking-card-bg: #1e1e1e;
+    --parking-chip-border: #333333;
+    --parking-text: #ffffff;
+}
+
+/* ГЛАВНА ГРУПА БУТОНИ */
+.map-floating-buttons {
+    position: absolute;
+    right: 16px;
+    bottom: calc(80px + var(--safe-bottom));
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+    z-index: 5500;
+    pointer-events: none;
+}
+.map-floating-buttons button { pointer-events: auto; }
+
+/* ХОРИЗОНТАЛНО МЕНЮ СЛОЕВЕ */
+.layers-menu-horizontal {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    position: absolute;
+    right: 66px; 
+    bottom: 68px; /* На нивото на бутона Слоеве */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.menu-hidden {
+    opacity: 0;
+    transform: translateX(40px) scale(0.8);
+    pointer-events: none !important;
+}
+
+/* ХОРИЗОНТАЛЕН БАР С ПАРКИНГИ (Chips) */
+.parking-scroll-wrapper {
+    position: absolute;
+    bottom: 140px;
+    right: 0;
+    width: calc(100vw - 32px);
+    max-width: 450px;
+    display: flex;
+    align-items: center;
+    pointer-events: auto;
+    transition: all 0.3s ease;
+}
+.parking-chips-container {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    padding: 10px 5px;
+    width: 100%;
+}
+.parking-chips-container::-webkit-scrollbar { display: none; }
+
+/* СТРЕЛКИ С АНИМАЦИЯ */
+.scroll-arrow {
+    width: 36px; height: 36px; min-width: 36px;
+    background: var(--surface);
+    border-radius: 50%;
+    border: 1px solid var(--outline);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--primary);
+    position: absolute; z-index: 10; cursor: pointer;
+}
+.left-arrow { left: -10px; animation: bounceLeft 2s infinite; }
+.right-arrow { right: -10px; animation: bounceRight 2s infinite; }
+@keyframes bounceLeft { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-5px); } }
+@keyframes bounceRight { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
+
+/* КАРТА НА ПАРКИНГ В МЕНЮТО (Чип) */
+.parking-chip-card {
+    background: var(--parking-card-bg);
+    min-width: 165px;
+    padding: 12px;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: 1.5px solid var(--parking-chip-border);
+    flex-shrink: 0;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.chip-name { font-size: 13px; font-weight: 800; color: var(--parking-text); white-space: nowrap; }
+.chip-free { font-size: 13px; font-weight: 700; color: #2E7D32; }
+
+/* ДЕТАЙЛЕН ПАНЕЛ (Android Full Screen) */
+.parking-full-sheet {
+    z-index: 20000 !important;
+    height: 85vh !important;
+    background: var(--parking-card-bg) !important;
+    border-radius: 28px 28px 0 0 !important;
+}
+
+/* ТАРИФИ В ПАНЕЛА */
+.tariff-box { padding: 20px; border-radius: 18px; margin-bottom: 12px; text-align: left; }
+.tariff-green { background: rgba(46, 125, 50, 0.08); border: 1px solid rgba(46, 125, 50, 0.2); color: #2E7D32; }
+.tariff-blue { background: rgba(28, 117, 188, 0.08); border: 1px solid rgba(28, 117, 188, 0.2); color: #1C75BC; }
+
+.warning-card {
+    background: rgba(255, 249, 196, 0.2);
+    padding: 15px; border-radius: 12px; border: 1px solid #FBC02D;
+    display: flex; gap: 10px; margin: 20px 0; color: #856404;
+}
+
+.fab-static, .fab-sub-menu {
+    width: 56px; height: 56px; border-radius: 16px; border: none;
+    background: var(--surface); color: var(--primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+.fab-sub-menu.active, .active-layers-btn {
+    background: var(--primary) !important;
+    color: white !important;
+}
+
+
+/* --- ЦВЕТОВЕ ЗА ТАРИФИТЕ В ДЕТАЙЛИТЕ --- */
+:root {
+    --tariff-green-bg: rgba(46, 125, 50, 0.08);
+    --tariff-green-border: rgba(46, 125, 50, 0.2);
+    --tariff-green-text: #1b5e20;
+    
+    --tariff-blue-bg: rgba(28, 117, 188, 0.08);
+    --tariff-blue-border: rgba(28, 117, 188, 0.2);
+    --tariff-blue-text: #0d47a1;
+
+    --no-transit-border: #dddddd;
+}
+
+body.dark-theme {
+    --tariff-green-bg: rgba(76, 175, 80, 0.15);
+    --tariff-green-text: #81c784;
+    
+    --tariff-blue-bg: rgba(100, 181, 246, 0.15);
+    --tariff-blue-text: #90caf9;
+
+    --no-transit-border: #444444;
+}
+
+/* Стил за самите карти в панела */
+.tariff-card {
+    padding: 18px;
+    border-radius: 16px;
+    margin-bottom: 12px;
+    text-align: left;
+    border: 1px solid transparent;
+}
+.tariff-card.green {
+    background-color: var(--tariff-green-bg);
+    border-color: var(--tariff-green-border);
+    color: var(--tariff-green-text);
+}
+.tariff-card.blue {
+    background-color: var(--tariff-blue-bg);
+    border-color: var(--tariff-blue-border);
+    color: var(--tariff-blue-text);
+}
+
+.parking-info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.no-transit-box {
+    padding: 15px;
+    border: 1.5px solid var(--no-transit-border);
+    border-radius: 14px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 15px;
+    margin-bottom: 15px;
+    background: transparent;
+    color: var(--parking-text);
+}
+
+.warning-card {
+    background: rgba(255, 249, 196, 0.15);
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid #FBC02D;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    color: #856404;
+}
+body.dark-theme .warning-card {
+    color: #fdd835;
+}
+
+/* --- ГЛОБАЛНИ ПРЕМЕНЛИВИ ЗА ПАРКИНГ ПАНЕЛА --- */
+:root {
+    --parking-bg: #ffffff;
+    --parking-text: #1a1a1a;
+    --parking-border: #eeeeee;
+    --tariff-green: rgba(46, 125, 50, 0.08);
+    --tariff-blue: rgba(28, 117, 188, 0.08);
+}
+body.dark-theme {
+    --parking-bg: #1c1c1e;
+    --parking-text: #ffffff;
+    --parking-border: #333333;
+    --tariff-green: rgba(76, 175, 80, 0.15);
+    --tariff-blue: rgba(100, 181, 246, 0.15);
+}
+
+/* ФИКС ЗА КЛИКОВЕТЕ: Контейнерът не пречи, бутоните работят */
+.map-floating-buttons {
+    position: absolute;
+    right: 16px;
+    bottom: calc(85px + var(--safe-bottom));
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+    z-index: 10000;
+    pointer-events: none; /* ВАЖНО: Картата отдолу е кликаема */
+}
+
+.map-floating-buttons button, 
+.parking-chips-container, 
+.parking-chip-card {
+    pointer-events: auto !important; /* Бутоните и менютата хващат клик */
+}
+
+/* ГЛАВНИ БУТОНИ (FAB) */
+.fab-static, .fab-sub-menu {
+    width: 56px; height: 56px; border-radius: 16px;
+    background: var(--surface); color: var(--primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; border: none; transition: 0.2s;
+}
+
+/* ХОРИЗОНТАЛНО МЕНЮ */
+.layers-menu-horizontal {
+    display: flex; flex-direction: row; gap: 10px;
+    position: absolute; right: 66px; bottom: 68px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.menu-hidden { opacity: 0; transform: translateX(30px); pointer-events: none !important; }
+
+/* ПАРКИНГ ЧИПОВЕ */
+.parking-scroll-wrapper {
+    position: absolute; bottom: 140px; right: 0;
+    width: calc(100vw - 32px); max-width: 450px;
+    display: flex; align-items: center;
+    transition: all 0.3s ease;
+}
+
+.parking-chips-container {
+    display: flex; gap: 10px; overflow-x: auto;
+    scroll-behavior: smooth; scrollbar-width: none;
+    padding: 10px 5px; width: 100%;
+}
+.parking-chips-container::-webkit-scrollbar { display: none; }
+
+.parking-chip-card {
+    background: var(--parking-bg); min-width: 160px; padding: 12px;
+    border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: 1.5px solid var(--parking-border); flex-shrink: 0; text-align: center;
+}
+.chip-name { font-size: 13px; font-weight: 800; color: var(--parking-text); }
+.chip-free { font-size: 13px; font-weight: 700; margin-top: 2px; }
+
+/* СТРЕЛКИ */
+.scroll-arrow {
+    width: 36px; height: 36px; min-width: 36px; background: var(--surface);
+    border-radius: 50%; border: 1px solid var(--outline); box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    display: flex; align-items: center; justify-content: center; color: var(--primary);
+    position: absolute; z-index: 10; cursor: pointer;
+}
+.left-arrow { left: -10px; animation: bounceLeft 2s infinite; }
+.right-arrow { right: -10px; animation: bounceRight 2s infinite; }
+@keyframes bounceLeft { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-5px); } }
+@keyframes bounceRight { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
+
+/* ДЕТАЙЛЕН ПАНЕЛ */
+.parking-full-sheet {
+    z-index: 20000 !important; height: 85vh !important;
+    background: var(--parking-bg) !important; border-radius: 28px 28px 0 0 !important;
+}
+
+.tariff-card { padding: 20px; border-radius: 18px; margin-bottom: 12px; text-align: left; }
+.tariff-card.green { background: var(--tariff-green); border: 1px solid rgba(46,125,50,0.2); color: #2E7D32; }
+.tariff-card.blue { background: var(--tariff-blue); border: 1px solid rgba(28,117,188,0.2); color: #1C75BC; }
+body.dark-theme .tariff-card.green { color: #81c784; }
+body.dark-theme .tariff-card.blue { color: #90caf9; }
+
+.warning-card { background: rgba(255, 249, 196, 0.2); padding: 15px; border-radius: 12px; border: 1px solid #FBC02D; display: flex; gap: 10px; margin: 20px 0; }
+
+
+/* --- ЦВЕТОВЕ И ТЕМИ --- */
+:root { --parking-card-bg: #ffffff; --parking-text: #1a1a1a; --tariff-green: rgba(46, 125, 50, 0.1); --tariff-blue: rgba(28, 117, 188, 0.1); }
+body.dark-theme { --parking-card-bg: #1e1e1e; --parking-text: #ffffff; --tariff-green: rgba(76, 175, 80, 0.15); --tariff-blue: rgba(100, 181, 246, 0.15); }
+
+/* ФИКС ЗА КЛИКОВЕТЕ: Контейнерът не блокира картата */
+.map-floating-buttons {
+    position: absolute; right: 16px; bottom: calc(80px + var(--safe-bottom));
+    display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
+    z-index: 5500; pointer-events: none;
+}
+.map-floating-buttons button, .parking-chips-container { pointer-events: auto; }
+
+/* ХОРИЗОНТАЛНО МЕНЮ СЛОЕВЕ */
+.layers-menu-horizontal {
+    display: flex; flex-direction: row; gap: 10px;
+    position: absolute; right: 66px; bottom: 68px; /* На нивото на бутона Слоеве */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.menu-hidden { opacity: 0; transform: translateX(40px) scale(0.8); pointer-events: none !important; }
+
+/* ЧИПОВЕ ЗА ПАРКИНГИ */
+.parking-scroll-wrapper {
+    position: absolute; bottom: 140px; right: 0;
+    width: calc(100vw - 32px); max-width: 450px;
+    display: flex; align-items: center; transition: all 0.3s ease;
+}
+.parking-chips-container {
+    display: flex; gap: 10px; overflow-x: auto; scroll-behavior: smooth;
+    scrollbar-width: none; padding: 10px 5px; width: 100%;
+}
+.parking-chips-container::-webkit-scrollbar { display: none; }
+
+.parking-chip-card {
+    background: var(--parking-card-bg); min-width: 160px; padding: 12px;
+    border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: 1px solid rgba(128,128,128,0.2); flex-shrink: 0; text-align: center;
+}
+.chip-name { font-size: 13px; font-weight: 800; color: var(--parking-text); white-space: nowrap; }
+.chip-free { font-size: 13px; font-weight: 700; color: #2E7D32; margin-top: 2px; }
+
+/* СТРЕЛКИ С АНИМАЦИЯ */
+.scroll-arrow {
+    width: 36px; height: 36px; min-width: 36px; background: var(--surface);
+    border-radius: 50%; border: 1px solid rgba(128,128,128,0.3);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;
+    color: var(--primary); position: absolute; z-index: 10; cursor: pointer;
+}
+.left-arrow { left: -10px; animation: bounceLeft 2s infinite; }
+.right-arrow { right: -10px; animation: bounceRight 2s infinite; }
+@keyframes bounceLeft { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-5px); } }
+@keyframes bounceRight { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
+
+/* ПАНЕЛ ДЕТАЙЛИ */
+.parking-full-sheet {
+    z-index: 20000 !important; height: 85vh !important;
+    background: var(--parking-card-bg) !important; border-radius: 28px 28px 0 0 !important;
+}
+.tariff-card { padding: 20px; border-radius: 18px; margin-bottom: 12px; text-align: left; }
+.tariff-card.green { background: var(--tariff-green); border: 1px solid rgba(46,125,50,0.2); color: #2E7D32; }
+.tariff-card.blue { background: var(--tariff-blue); border: 1px solid rgba(28,117,188,0.2); color: #1C75BC; }
+body.dark-theme .tariff-card.green { color: #81c784; }
+body.dark-theme .tariff-card.blue { color: #90caf9; }
+
+/* ГЛАВНИ БУТОНИ */
+.fab-static, .fab-sub-menu {
+    width: 56px; height: 56px; border-radius: 16px; border: none;
+    background: var(--surface); color: var(--primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+.fab-sub-menu.active, .active-layers-btn { background: var(--primary) !important; color: white !important; }
+
+/* --- ТЕМИ ЗА ПАРКИНГ --- */
+:root {
+    --parking-bg: #ffffff;
+    --parking-text: #1a1a1a;
+    --tariff-green-bg: #e8f5e9;
+    --tariff-green-text: #2e7d32;
+    --tariff-blue-bg: #e3f2fd;
+    --tariff-blue-text: #1565c0;
+    --warning-bg: #fff9c4;
+    --warning-text: #7f6000;
+    --warning-border: #fbc02d;
+}
+
+body.dark-theme {
+    --parking-bg: #1c1c1e;
+    --parking-text: #ffffff;
+    --tariff-green-bg: #1b3921;
+    --tariff-green-text: #81c784;
+    --tariff-blue-bg: #1a2e44;
+    --tariff-blue-text: #64b5f6;
+    --warning-bg: #3e3617;
+    --warning-text: #ffd54f;
+    --warning-border: #f57f17;
+}
+
+/* ЖЪЛТОТО ПРЕДУПРЕЖДЕНИЕ (1:1 Android) */
+.warning-card {
+    background-color: var(--warning-bg);
+    color: var(--warning-text);
+    border: 1px solid var(--warning-border);
+    padding: 14px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+/* ТАРИФИТЕ */
+.tariff-card.green {
+    background-color: var(--tariff-green-bg);
+    color: var(--tariff-green-text);
+    border: 1px solid transparent;
+}
+.tariff-card.blue {
+    background-color: var(--tariff-blue-bg);
+    color: var(--tariff-blue-text);
+    border: 1px solid transparent;
+}
+
+/* БОКС БЕЗ ТРАНСПОРТ */
+.no-transit-box {
+    padding: 15px;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+    border-radius: 14px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 15px;
+    color: var(--parking-text);
+}
+
+/* --- ПЕРСОНАЛИЗИРАН ПОСТОЯНЕН СКРОЛБАР ЗА ДЕТАЙЛИТЕ --- */
+
+/* 1. Дефинираме размерите на лентата */
+#parking-details-sheet .sheet-content::-webkit-scrollbar {
+    width: 6px; /* Тънка и елегантна лента */
+    display: block;
+}
+
+/* 2. Фонът на релсата (track) - оставяме го прозрачен, за да не загрозява */
+#parking-details-sheet .sheet-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* 3. Самият плъзгач (thumb) - ТОВА Е ВИДИМАТА ЧАСТ */
+#parking-details-sheet .sheet-content::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2); /* Сиво за светла тема */
+    border-radius: 20px; /* Заоблен Material стил */
+    border: 1px solid transparent; /* Малко отстояние */
+}
+
+/* 4. Цвят при ТЪМНА ТЕМА */
+body.dark-theme #parking-details-sheet .sheet-content::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3); /* Светло сиво за тъмен фон */
+}
+
+/* Подсигуряване за Firefox */
+#parking-details-sheet .sheet-content {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+body.dark-theme #parking-details-sheet .sheet-content {
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* Добавяме малко падинг в дясно на съдържанието, 
+   за да не залепва текста за скролбара */
+#parking-details-sheet .sheet-content {
+    padding-right: 12px !important;
+    overflow-y: auto !important;
+}
+
+/* Когато менюто е отворено */
+.layers-menu-horizontal {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    position: absolute;
+    right: 66px; 
+    bottom: 68px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Добави това: */
+    pointer-events: auto; 
+    visibility: visible;
+}
+
+/* Когато менюто е СКРИТО */
+.menu-hidden {
+    opacity: 0;
+    transform: translateX(40px) scale(0.8);
+    
+    /* ТОВА Е ФИКСЪТ: */
+    pointer-events: none !important; 
+    visibility: hidden; /* Допълнителна защита */
+}
+
+/* Когато лентата е отворена */
+.parking-scroll-wrapper {
+    position: absolute;
+    bottom: 140px;
+    right: 0;
+    /* ... другите ти стилове ... */
+    
+    /* Добави това: */
+    pointer-events: auto;
+    visibility: visible;
+}
+
+/* Когато лентата е СКРИТА */
+.parking-scroll-wrapper.hidden {
+    opacity: 0;
+    transform: translateY(20px);
+    
+    /* ТОВА Е ФИКСЪТ: */
+    pointer-events: none !important;
+    visibility: hidden;
+}
+
+/* Контейнер за избраните линии (Chips) */
+.selected-lines-container {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important; /* Подрежда ги плътно вляво */
+    width: 100%;
+}
+
+/* Самите хапчета за линии и бутона Clear */
+.line-filter-chip {
+    display: inline-flex !important;
+    width: auto !important;        /* ВАЖНО: Забранява ширина 100% */
+    flex: 0 0 auto !important;     /* ВАЖНО: Забранява разпъването (flex-grow) */
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 4px 12px !important;
+    border-radius: 16px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: white !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+    height: 32px !important;
+    margin: 0 !important;
+}
+
+.line-filter-chip .material-icons-round {
+    font-size: 16px !important;
+    margin-right: 4px !important;
+}
+
+footer { text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.2); font-family: 'Orbitron'; font-size: 0.65rem; letter-spacing: 2px;  }
+.f-name { color: var(--blue); text-shadow: 0 0 10px var(--blue);    color: var(--on-surface-variant); /* Взима цвета от темата */
+    opacity: 0.3;  }            /* Прозрачност за ефект на воден знак */
+
+.line-filter-chip .remove-icon {
+    font-size: 16px !important;
+    margin-left: 6px !important;
+    margin-right: 0 !important;
+    background: rgba(0,0,0,0.2) !important;
+    border-radius: 50% !important;
+    padding: 2px !important;
+}
