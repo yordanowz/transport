@@ -2379,7 +2379,7 @@ function setupSettings() {
     const btnWeb = document.getElementById('btn-share-web-link');
     if (btnWeb) {
         btnWeb.onclick = () => {
-            const url = "https://yordanowz.com/";
+            const url = "https://enforcebg.bg/";
             performShare(url, "Sofia Yrd Maps (Web/iOS)");
             closeShareModal();
         };
